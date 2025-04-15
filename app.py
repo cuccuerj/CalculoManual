@@ -106,7 +106,7 @@ def process_pdf_content(content):
     return '\n'.join(output)
 
 # Interface do Streamlit
-st.title("📄 Processador de PDFs de Teleterapia")
+st.title("📄 Processador de PDFs de Teleterapia (OBS: campos com filtros ainda nao funcionam bem")
 st.markdown("""
 Faça upload de um arquivo PDF de planejamento de teleterapia para extrair os dados estruturados.
 """)
