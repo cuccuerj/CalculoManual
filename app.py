@@ -93,7 +93,7 @@ def process_pdf_content(content):
             i < len(prof_eff)):
 
             linha = (
-                f"Campo {i+1}: {energy_matches[i]}, '{x_sizes[i]}, '{y_sizes[i]}, "
+                f"{energy_matches[i]}, '{x_sizes[i]}, '{y_sizes[i]}, "
                 f"'{jaw_y1[i]}, '{jaw_y2[i]}, "
                 f"'{filtros[i]}, '{um_matches[i]}, "
                 f"'{dose_matches[i]}, '{ssd[i]}, "
