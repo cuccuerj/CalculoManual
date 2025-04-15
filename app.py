@@ -67,7 +67,7 @@ def process_pdf_content(content):
             unidade = parts[1].split(',')[0].strip()
             energia = parts[2].strip()
             formatted = f"Informações:, 'Unidade, 'de, 'tratamento:, '{unidade},, 'energia:, '{energia}'"
-            output.append(formatted)
+    output.append(formatted)
 
     # Fluência total com tratamento de filtros
     padraocampofluencia = r"fluência total: fsx\s*=\s*(\d+)\s*mm,\s*fsy\s*=\s*(\d+)\s*mm"
