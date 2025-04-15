@@ -3,7 +3,7 @@ import re
 import PyPDF2
 from io import BytesIO
 
-st.set_page_config(page_title="Processador de PDFs de Teleterapia", page_icon="🏥")
+st.set_page_config(page_title="Processador de PDFs para o cálculo manual", page_icon="🏥")
 
 # Funções de extração de dados (as mesmas do seu código)
 def extract_field(content, start, end):
