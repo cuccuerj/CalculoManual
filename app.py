@@ -77,13 +77,14 @@ def process_pdf_content(content):
     
     if matches:
         for i in range(len(filtros)):
-            if i < len(filtros) and filtros[i] != '-':
-                fx.append("-")
+          if i < len(filtros) and filtros[i] != '-':
+                fx.append("-")  # Filtro ativo: adiciona "-"
                 fy.append("-")
-            elif i < len(matches):
-                fsx, fsy = matches[i]
-                fx.append(fsx)
-                fy.append(fsy)
+          else:            
+                for match in matches:
+                    fsx, fsy = match
+                    fx.append(fsx) 
+                    fy.append(fsy)
 
     # Dados dos campos de tratamento
     for i in range(len(energy_matches)):
@@ -98,7 +99,7 @@ def process_pdf_content(content):
                 f"'{filtros[i]}, '{um_matches[i]}, "
                 f"'{dose_matches[i]}, '{ssd[i]}, "
                 f"'{prof[i]}, '{prof_eff[i]}, "
-                #f"'{fx[i]}, '{fy[i]}"
+                f"'{fx[i]}, '{fy[i]}"
             )
             output.append(linha)
 
