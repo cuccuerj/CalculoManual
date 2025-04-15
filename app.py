@@ -98,7 +98,7 @@ def process_pdf_content(content):
                 f"'{filtros[i]}, '{um_matches[i]}, "
                 f"'{dose_matches[i]}, '{ssd[i]}, "
                 f"'{prof[i]}, '{prof_eff[i]}, "
-                f"'{fx[i]}, '{fy[i]}"
+                #f"'{fx[i]}, '{fy[i]}"
             )
             output.append(linha)
 
