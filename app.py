@@ -46,6 +46,28 @@ st.markdown("""
         font-family: monospace;
         font-size: 0.85rem;
     }
+    /* Esconde o texto padrão do uploader */
+    .uploadedFile {display: none;}
+    .stFileUploader label {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: #1f77b4;
+        color: white;
+        padding: 0.8rem 1.5rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background-color 0.3s ease;
+    }
+    .stFileUploader label:hover {
+        background-color: #105a8b;
+    }
+    /* Remove borda e fundo padrão */
+    .stFileUploader > div {
+        border: none !important;
+        background: none !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
