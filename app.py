@@ -1,332 +1,305 @@
 import streamlit as st
 import re
-import pandas as pd
 import PyPDF2
 from io import BytesIO
+import pandas as pd
 
 # ===== Configuração da Página =====
 st.set_page_config(
-    page_title="Processador de PDFs - Teleterapia",
+    page_title="Processador de Teleterapia",
     page_icon="🏥",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
-# ===== CSS Moderno e Customização do Botão =====
+# ===== CSS Moderno e Customização do Uploader =====
 st.markdown("""
 <style>
-    /* Estilos Gerais */
-    .main-header {
-        font-size: 2.2rem;
-        font-weight: 700;
-        color: #0E1117;
-        margin-bottom: 0.5rem;
+    /* Estilo Geral */
+    .main {
+        background-color: #f8f9fa;
     }
-    .sub-header {
+    h1 {
+        color: #2c3e50;
+        font-family: 'Helvetica Neue', sans-serif;
+        font-weight: 700;
+        text-align: center;
+    }
+    h3 {
+        color: #7f8c8d;
         font-size: 1.1rem;
-        color: #555;
+        text-align: center;
         margin-bottom: 2rem;
     }
-    
-    /* ===== TRANSFORMAÇÃO DO FILE UPLOADER EM BOTÃO ===== */
-    /* Esconde o texto padrão de 'Drag and drop' e o ícone */
-    [data-testid='stFileUploader'] section > div:first-child {
-        display: none;
+
+    /* --- Customização AVANÇADA do File Uploader para parecer um botão --- */
+    [data-testid='stFileUploader'] {
+        width: 100%;
+        max-width: 400px;
+        margin: 0 auto;
     }
     
     [data-testid='stFileUploader'] section {
         padding: 0;
-        background-color: transparent;
+        background-color: #3498db;
         border: none;
-    }
-
-    [data-testid='stFileUploader'] section > button {
-        display: none; /* Esconde o botão de fechar nativo se aparecer */
-    }
-
-    /* Estiliza a área clicável para parecer um botão moderno */
-    [data-testid='stFileUploader'] {
-        width: fit-content;
-        margin: auto;
-    }
-
-    /* Cria o visual do botão usando o label do uploader */
-    div[data-testid="stFileUploader"] label {
-        display: inline-flex;
+        border-radius: 8px;
+        transition: background-color 0.3s;
+        height: 60px; /* Altura do botão */
+        display: flex;
         align-items: center;
         justify-content: center;
-        background-color: #2563EB; /* Azul Moderno */
-        color: white;
-        padding: 0.6rem 1.5rem;
-        border-radius: 8px;
-        cursor: pointer;
-        font-weight: 600;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        transition: all 0.3s ease;
-        text-transform: uppercase;
-        font-size: 0.9rem;
-        letter-spacing: 0.5px;
     }
 
-    div[data-testid="stFileUploader"] label:hover {
-        background-color: #1D4ED8;
-        transform: translateY(-2px);
-        box-shadow: 0 6px 8px -1px rgba(0, 0, 0, 0.15);
+    [data-testid='stFileUploader'] section:hover {
+        background-color: #2980b9; /* Cor ao passar o mouse */
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
 
-    div[data-testid="stFileUploader"] label::before {
-        content: "📂 Carregar Relatório PDF"; /* Texto do botão */
-        margin-right: 8px;
-    }
-    
-    /* Esconde o texto original "Browse files" */
-    div[data-testid="stFileUploader"] span {
+    /* Esconde o ícone e texto padrão feios do Streamlit */
+    [data-testid='stFileUploader'] section > button {
         display: none;
     }
+    [data-testid='stFileUploader'] section span {
+        display: none;
+    }
+    
+    /* Cria o texto do botão via CSS */
+    [data-testid='stFileUploader'] section::after {
+        content: "📂 Carregar PDF de Tratamento";
+        color: white;
+        font-weight: bold;
+        font-size: 1rem;
+        pointer-events: none;
+    }
 
-    /* ===== Fim do CSS do Uploader ===== */
+    /* Pequeno texto de ajuda abaixo do botão */
+    .upload-help {
+        text-align: center;
+        font-size: 0.8rem;
+        color: #95a5a6;
+        margin-top: -10px;
+        margin-bottom: 20px;
+    }
 
+    /* Caixas de resultado */
+    .result-area {
+        background-color: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        border: 1px solid #e1e4e8;
+    }
+    
     .stTextArea textarea {
         font-family: 'Courier New', monospace;
-        font-size: 0.9rem;
-        border-radius: 8px;
-    }
-    
-    .status-box {
-        padding: 1rem;
-        border-radius: 8px;
-        margin-bottom: 1rem;
-    }
-    
-    .info-card {
-        background-color: #f8f9fa;
-        border: 1px solid #e9ecef;
-        padding: 1rem;
-        border-radius: 8px;
-        margin-bottom: 10px;
+        color: #2c3e50;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# ===== Funções de Extração (Lógica Original Preservada) =====
-def extract_field(content, start, end):
-    try:
-        pattern = fr'{re.escape(start)}(.*?){re.escape(end)}'
-        match = re.search(pattern, content, re.DOTALL)
-        if match:
-            block = match.group(1)
-            valores = re.findall(r'Campo \d+\s*([\d.]+)\s*cm', block)
-            return valores
-    except Exception:
-        pass
-    return []
+# ===== Classe de Processamento =====
+class TeletherapyExtractor:
+    def __init__(self, content):
+        self.raw_content = content
+        # Normaliza espaços múltiplos para um único espaço
+        self.clean_content = ' '.join(content.split())
+        self.debug_data = {}
 
-def extract_jaw(content, start, end, prefix):
-    try:
-        pattern = fr'{re.escape(start)}(.*?){re.escape(end)}'
-        match = re.search(pattern, content, re.DOTALL)
-        if match:
-            block = match.group(1)
-            valores = re.findall(fr'{re.escape(prefix)}\s*([+-]?\d+\.\d+)', block)
-            return valores
-    except Exception:
-        pass
-    return []
+    def _extract_regex(self, pattern, content_block=None, group=1, find_all=False):
+        """Função genérica segura para extração via Regex."""
+        target = content_block if content_block else self.clean_content
+        try:
+            if find_all:
+                return re.findall(pattern, target)
+            match = re.search(pattern, target, re.IGNORECASE | re.DOTALL)
+            return match.group(group).strip() if match else None
+        except Exception:
+            return None
 
-def extract_filtros(content):
-    try:
-        pattern = r'Filtro(.*?)MU'
-        match = re.search(pattern, content, re.DOTALL)
-        if match:
-            block = match.group(1)
-            valores = re.findall(r'Campo \d+\s*([-\w]+)', block)
-            return valores
-    except Exception:
-        pass
-    return []
+    def _get_block(self, start_marker, end_marker):
+        """Extrai um bloco de texto entre dois marcadores."""
+        pattern = fr'{re.escape(start_marker)}(.*?){re.escape(end_marker)}'
+        return self._extract_regex(pattern, group=1)
 
-def extract_fluencia_total(content):
-    try:
-        pattern = r'flu[eê]ncia\s+total\s*:\s*fsx\s*=\s*([0-9]+(?:\.[0-9]+)?)\s*mm,\s*fsy\s*=\s*([0-9]+(?:\.[0-9]+)?)\s*mm'
-        matches = re.findall(pattern, content, flags=re.IGNORECASE | re.DOTALL)
-        return matches[-1] if matches else None
-    except Exception:
-        return None
+    def process(self):
+        c = self.clean_content
+        data = {}
 
-def process_pdf_content(content):
-    # Normalização básica
-    content = ' '.join(content.split())
-    
-    output = []
-    debug_info = {}
-    
-    # 1. Identificação do Paciente
-    paciente_match = re.search(r'Nome do Paciente:\s*(.+?)(?=\s*Matricula)', content)
-    matricula_match = re.search(r'Matricula:\s*(\d+)', content)
-    
-    if paciente_match:
-        nome = paciente_match.group(1).strip()
-        # Formato específico solicitado (com vírgulas extras)
-        output.append(f"Nome, do, Paciente:, {', '.join(nome.split())}")
-        debug_info['nome'] = nome
-    
-    if matricula_match:
-        output.append(f"Matricula:, '{matricula_match.group(1)}'")
-        debug_info['matricula'] = matricula_match.group(1)
-    
-    # 2. Dados dos Campos
-    energy_matches = re.findall(r'Campo (\d+)\s+(\d+X)', content)
-    energias = [e[1] for e in energy_matches]
-    debug_info['energias'] = energias
-    num_campos = len(energias)
-    
-    # Extrações
-    x_sizes = extract_field(content, 'Tamanho do Campo Aberto X', 'Tamanho do Campo Aberto Y')
-    y_sizes = extract_field(content, 'Tamanho do Campo Aberto Y', 'Jaw Y1')
-    jaw_y1 = extract_jaw(content, 'Jaw Y1', 'Jaw Y2', 'Y1:')
-    jaw_y2 = extract_jaw(content, 'Jaw Y2', 'Filtro', 'Y2:')
-    filtros = extract_filtros(content)
-    um_matches = re.findall(r'Campo \d+\s+(\d+)\s*UM', content)
-    dose_matches = re.findall(r'Campo \d+\s+([\d.]+)\s*cGy', content)
-    ssd = extract_field(content, 'SSD', 'Profundidade')
-    prof = extract_field(content, 'Profundidade', 'Profundidade Efetiva')
-    prof_eff = extract_field(content, 'Profundidade Efetiva', 'Informações do Campo')
-    
-    # Salvar debug
-    debug_info.update({
-        'x_sizes': x_sizes, 'y_sizes': y_sizes, 'jaw_y1': jaw_y1, 
-        'jaw_y2': jaw_y2, 'filtros': filtros, 'um_matches': um_matches,
-        'dose_matches': dose_matches, 'ssd': ssd, 'prof': prof, 'prof_eff': prof_eff
-    })
-    
-    # 3. Informações da Unidade
-    unidade_pattern = r'Unidade de tratamento:\s*([^,]+),\s*energia:\s*(\S+)'
-    unidades = re.findall(unidade_pattern, content)
-    if unidades:
-        unidade, energia_unidade = unidades[0]
-        formatted = f"Informações:, 'Unidade, 'de, 'tratamento:, '{unidade.strip()},, 'energia:, '{energia_unidade.strip()}'"
-        output.append(formatted)
-        debug_info['unidade'] = unidade.strip()
-    
-    # 4. Fluência
-    fluencia_total = extract_fluencia_total(content)
-    debug_info['fluencia_total'] = fluencia_total
-    
-    fx, fy = [], []
-    for i in range(num_campos):
-        # Lógica: Se tem filtro físico, não usa fluência (suposição baseada no código original)
-        if i < len(filtros) and filtros[i] != '-':
-            fx.append("-")
-            fy.append("-")
-        else:
-            if fluencia_total:
-                fsx, fsy = fluencia_total
-                fx.append(fsx)
-                fy.append(fsy)
-            else:
-                fx.append("-")
-                fy.append("-")
-    
-    # 5. Montagem das Linhas (CSV-Like Format)
-    table_data = [] # Para visualização bonita na UI
-    
-    for i in range(num_campos):
-        # Função auxiliar para pegar valor com segurança e formatar com apóstrofo
-        def get_val(arr, idx, prefix="'"):
-            return f"{prefix}{arr[idx]}" if idx < len(arr) else f"{prefix}N/A"
-
-        def get_raw(arr, idx): 
-            return arr[idx] if idx < len(arr) else "N/A"
-
-        linha_parts = [
-            energias[i] if i < len(energias) else 'N/A',
-            get_val(x_sizes, i),
-            get_val(y_sizes, i),
-            get_val(jaw_y1, i),
-            get_val(jaw_y2, i),
-            get_val(filtros, i),
-            get_val(um_matches, i),
-            get_val(dose_matches, i),
-            get_val(ssd, i),
-            get_val(prof, i),
-            get_val(prof_eff, i),
-            get_val(fx, i),
-            get_val(fy, i)
-        ]
-        output.append(", ".join(linha_parts))
+        # 1. Dados do Paciente
+        nome = self._extract_regex(r'Nome do Paciente:\s*(.+?)(?=\s*Matricula)')
+        matricula = self._extract_regex(r'Matricula:\s*(\d+)')
         
-        # Dados para tabela visual
-        table_data.append({
-            "Energia": energias[i],
-            "Campo X": get_raw(x_sizes, i),
-            "Campo Y": get_raw(y_sizes, i),
-            "Jaw Y1": get_raw(jaw_y1, i),
-            "Jaw Y2": get_raw(jaw_y2, i),
-            "Filtro": get_raw(filtros, i),
-            "UM": get_raw(um_matches, i),
-            "Dose": get_raw(dose_matches, i),
-            "SSD": get_raw(ssd, i),
-            "Fluência X": get_raw(fx, i),
-            "Fluência Y": get_raw(fy, i)
-        })
+        # 2. Unidade e Energia
+        unidade_match = re.search(r'Unidade de tratamento:\s*([^,]+),\s*energia:\s*(\S+)', c)
+        unidade = unidade_match.group(1).strip() if unidade_match else "N/A"
+        energia_unidade = unidade_match.group(2).strip() if unidade_match else "N/A"
 
-    return '\n'.join(output), debug_info, table_data
+        # 3. Identificação de Campos e Energias
+        # Busca padrão "Campo X 6X" ou "Campo X 15X"
+        campos_raw = re.findall(r'Campo (\d+)\s+(\d+X)', c)
+        energias_campos = [item[1] for item in campos_raw]
+        num_campos = len(energias_campos)
 
-# ===== Interface Principal =====
+        # 4. Extração de Blocos para Parsing
+        # Definimos os blocos onde cada informação reside para evitar pegar dados errados
+        block_x = self._get_block('Tamanho do Campo Aberto X', 'Tamanho do Campo Aberto Y')
+        block_y = self._get_block('Tamanho do Campo Aberto Y', 'Jaw Y1')
+        block_jaw_y1 = self._get_block('Jaw Y1', 'Jaw Y2')
+        block_jaw_y2 = self._get_block('Jaw Y2', 'Filtro')
+        block_filtros = self._get_block('Filtro', 'MU')
+        
+        # Extrações específicas dentro dos blocos
+        def get_vals_from_block(block, prefix_regex):
+            if not block: return []
+            return re.findall(prefix_regex, block)
 
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    st.markdown("<div class='main-header'>Processador de Teleterapia</div>", unsafe_allow_html=True)
-    st.markdown("<div class='sub-header'>Converta relatórios PDF para formato de dados estruturado</div>", unsafe_allow_html=True)
-    
-    # O botão customizado (via CSS)
-    uploaded_file = st.file_uploader("Carregar PDF", type=['pdf'], label_visibility="visible")
+        x_sizes = get_vals_from_block(block_x, r'Campo \d+\s*([\d.]+)\s*cm')
+        y_sizes = get_vals_from_block(block_y, r'Campo \d+\s*([\d.]+)\s*cm')
+        jaw_y1 = get_vals_from_block(block_jaw_y1, r'Y1:\s*([+-]?\d+\.\d+)')
+        jaw_y2 = get_vals_from_block(block_jaw_y2, r'Y2:\s*([+-]?\d+\.\d+)')
+        filtros = get_vals_from_block(block_filtros, r'Campo \d+\s*([-\w]+)')
+
+        # Dados gerais espalhados
+        um_vals = re.findall(r'Campo \d+\s+(\d+)\s*UM', c)
+        dose_vals = re.findall(r'Campo \d+\s+([\d.]+)\s*cGy', c)
+        
+        # Blocos finais
+        block_ssd = self._get_block('SSD', 'Profundidade')
+        ssd_vals = get_vals_from_block(block_ssd, r'Campo \d+\s*([\d.]+)\s*cm')
+        
+        block_prof = self._get_block('Profundidade', 'Profundidade Efetiva')
+        prof_vals = get_vals_from_block(block_prof, r'Campo \d+\s*([\d.]+)\s*cm')
+        
+        block_eff = self._get_block('Profundidade Efetiva', 'Informações do Campo')
+        prof_eff_vals = get_vals_from_block(block_eff, r'Campo \d+\s*([\d.]+)\s*cm')
+
+        # Fluência
+        fluencia_match = re.findall(r'flu[eê]ncia\s+total\s*:\s*fsx\s*=\s*([0-9.]+)\s*mm,\s*fsy\s*=\s*([0-9.]+)\s*mm', c, re.IGNORECASE)
+        fluencia_fsx, fluencia_fsy = fluencia_match[-1] if fluencia_match else (None, None)
+
+        # ===== Montagem das Linhas de Saída =====
+        output_lines = []
+        
+        # Cabeçalho Paciente (Formatado conforme seu código original com vírgulas extras)
+        if nome:
+            fmt_nome = ', '.join(nome.split())
+            output_lines.append(f"Nome, do, Paciente:, {fmt_nome}")
+        if matricula:
+            output_lines.append(f"Matricula:, '{matricula}'")
+        if unidade != "N/A":
+            output_lines.append(f"Informações:, 'Unidade, 'de, 'tratamento:, '{unidade},, 'energia:, '{energia_unidade}'")
+
+        # Dados Tabulares para conferência visual
+        table_data = []
+
+        for i in range(num_campos):
+            # Função auxiliar para pegar valor com segurança ou retornar 'N/A'
+            def safe_get(lst, idx, prefix="'"):
+                return f"{prefix}{lst[idx]}" if idx < len(lst) else "'N/A"
+
+            # Lógica da Fluência (baseado no filtro)
+            current_filtro = filtros[i] if i < len(filtros) else '-'
+            if current_filtro != '-' and fluencia_fsx:
+                f_x_val = f"'{fluencia_fsx}"
+                f_y_val = f"'{fluencia_fsy}"
+            else:
+                f_x_val = "'N/A" if fluencia_fsx is None else "'-"
+                f_y_val = "'N/A" if fluencia_fsx is None else "'-"
+                # Ajuste lógico: Se tem filtro, geralmente não tem fluencia FSX/FSY da mesma forma que campo aberto? 
+                # Mantive a lógica original: se filtro != '-', usa '-', senão usa o valor extraído.
+                if current_filtro != '-': 
+                     f_x_val, f_y_val = "'-", "'-"
+                elif fluencia_fsx:
+                     f_x_val, f_y_val = f"'{fluencia_fsx}", f"'{fluencia_fsy}"
+                else:
+                     f_x_val, f_y_val = "'-", "'-"
+
+            row = [
+                energias_campos[i],
+                safe_get(x_sizes, i),
+                safe_get(y_sizes, i),
+                safe_get(jaw_y1, i),
+                safe_get(jaw_y2, i),
+                safe_get(filtros, i),
+                safe_get(um_vals, i),
+                safe_get(dose_vals, i),
+                safe_get(ssd_vals, i),
+                safe_get(prof_vals, i),
+                safe_get(prof_eff_vals, i),
+                f_x_val,
+                f_y_val
+            ]
+            
+            output_lines.append(", ".join(row))
+            
+            # Limpa aspas para a tabela visual
+            clean_row = [r.replace("'", "") for r in row]
+            table_data.append(clean_row)
+
+        final_text = "\n".join(output_lines)
+        
+        # Cria dataframe para display
+        df = pd.DataFrame(table_data, columns=[
+            "Energia", "X Size", "Y Size", "Jaw Y1", "Jaw Y2", "Filtro", 
+            "UM", "Dose", "SSD", "Prof", "Prof Eff", "FSX", "FSY"
+        ])
+        
+        return final_text, df, nome
+
+# ===== Layout Principal =====
+
+st.title("🏥 Processador de Teleterapia")
+st.markdown("<h3>Converta PDFs de tratamento em dados estruturados</h3>", unsafe_allow_html=True)
+
+# Container do Uploader
+with st.container():
+    uploaded_file = st.file_uploader("", type="pdf")
+    st.markdown('<div class="upload-help">Arraste o arquivo ou clique no botão azul acima</div>', unsafe_allow_html=True)
 
 if uploaded_file is not None:
     try:
-        with st.spinner("Processando documento..."):
-            # Leitura do PDF
-            pdf_reader = PyPDF2.PdfReader(uploaded_file)
-            full_text = ""
-            for page in pdf_reader.pages:
-                full_text += page.extract_text() + "\n"
+        # Leitura do PDF
+        reader = PyPDF2.PdfReader(uploaded_file)
+        full_text = ""
+        for page in reader.pages:
+            full_text += page.extract_text() + "\n"
             
-            # Processamento
-            result_text, debug_data, table_data = process_pdf_content(full_text)
-            
-            st.success("Processamento concluído com sucesso!")
-            
-            # Abas para organização
-            tab1, tab2, tab3 = st.tabs(["📄 Texto Formatado", "📊 Visualização em Tabela", "🐞 Debug"])
-            
-            with tab1:
-                st.markdown("### Saída para Copiar")
-                st.markdown("Copie o conteúdo abaixo para o sistema de destino:")
-                st.text_area("Resultado", value=result_text, height=300, label_visibility="collapsed")
-            
-            with tab2:
-                st.markdown("### Conferência de Dados")
-                if debug_data.get('nome'):
-                    st.markdown(f"**Paciente:** {debug_data['nome']} | **Matrícula:** {debug_data.get('matricula', '-')}")
-                
-                if table_data:
-                    df = pd.DataFrame(table_data)
-                    st.dataframe(df, use_container_width=True)
-                else:
-                    st.warning("Nenhum campo de tratamento encontrado.")
+        # Processamento
+        extractor = TeletherapyExtractor(full_text)
+        result_text, df_preview, paciente_nome = extractor.process()
+        
+        st.divider()
+        
+        # Colunas para organizar o resultado
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            st.success("✅ Processamento Concluído!")
+            st.markdown(f"**Paciente:** {paciente_nome if paciente_nome else 'Não identificado'}")
+        
+        with col2:
+            # Botão de Download
+            file_name = f"teleterapia_{paciente_nome.replace(' ', '_')}.txt" if paciente_nome else "dados_teleterapia.txt"
+            st.download_button(
+                label="⬇️ Baixar Arquivo .txt",
+                data=result_text,
+                file_name=file_name,
+                mime="text/plain",
+                use_container_width=True
+            )
 
-            with tab3:
-                st.markdown("### Dados Brutos Extraídos")
-                st.json(debug_data)
-
+        # Aba de visualização
+        tab1, tab2 = st.tabs(["📊 Visualização Tabela", "📝 Texto Formatado"])
+        
+        with tab1:
+            st.caption("Conferência dos dados extraídos:")
+            st.dataframe(df_preview, use_container_width=True)
+            
+        with tab2:
+            st.caption("Formato final para exportação (Copiável):")
+            st.text_area("", value=result_text, height=300, key="final_output")
+            
     except Exception as e:
-        st.error(f"Ocorreu um erro ao processar o arquivo: {str(e)}")
-else:
-    # Espaço vazio ou instruções quando não há arquivo
-    st.markdown(
-        """
-        <div style='text-align: center; color: #888; margin-top: 50px;'>
-            <p>Aguardando upload do arquivo PDF...</p>
-        </div>
-        """, 
-        unsafe_allow_html=True
-    )
+        st.error(f"Erro ao processar o arquivo: {str(e)}")
+        st.info("Verifique se o PDF é legível e segue o padrão esperado.")
