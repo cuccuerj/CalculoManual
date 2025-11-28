@@ -283,4 +283,3 @@ if uploaded_file:
 
 st.markdown('</div>', unsafe_allow_html=True) # Fecha Card
 
-Would you like me to upload these files to the Streamlit app for you to test the new design, or is the code sufficient?
