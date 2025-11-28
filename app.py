@@ -103,11 +103,11 @@ def extract_filtros(content):
 
 
 def extract_fluencia_values(content):
-    """Extrai valores de fluência (fsx e fsy) apenas quando for 'fluência total'"""
-    # Casa exclusivamente linhas que mencionam 'fluência total' e depois fsx/fsy
-    pattern = r'Informações:\s*.*?fluência\s+total:\s*fsx\s*=\s*(\d+)\s*mm,\s*fsy\s*=\s*(\d+)\s*mm'
+    pattern = r'flu[eê]ncia\s+total\s*:\s*fsx\s*=\s*([0-9]+(?:\.[0-9]+)?)\s*mm,\s*fsy\s*=\s*([0-9]+(?:\.[0-9]+)?)\s*mm'
     matches = re.findall(pattern, content, flags=re.IGNORECASE | re.DOTALL)
-    return matches
+    # Se houver mais de uma, usa a última (geralmente a “determinada a partir da fluência total”)
+    return matches[-1] if matches else None
+
 
 
 def process_pdf_content(content):
