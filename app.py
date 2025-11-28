@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ===== CSS Global =====
+# ===== CSS: Botão custom baseado no uploader nativo =====
 st.markdown("""
 <style>
     .stApp { background-color: #f0f2f6; }
@@ -41,67 +41,75 @@ st.markdown("""
         margin-bottom: 1.5rem;
     }
 
-    /* ===== Esconde COMPLETAMENTE o uploader nativo ===== */
-    [data-testid="stFileUploader"] {
-        position: absolute !important;
-        width: 1px !important;
-        height: 1px !important;
-        overflow: hidden !important;
-        opacity: 0 !important;
-        pointer-events: none !important;
-        z-index: -1 !important;
+    /* Container centralizado para o uploader */
+    .uploader-wrapper {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 8px;
     }
 
-    /* ===== Botão 100% novo (não parece com o padrão do Streamlit) ===== */
-    .custom-upload {
-        display: inline-flex;
-        align-items: center;
-        gap: 12px;
+    /* Zera estilos padrões visuais (sem esconder funcionalidade) */
+    [data-testid="stFileUploader"] label {
+        display: none !important; /* Oculta o label padrão */
+    }
+
+    /* Área clicável do uploader — vira nosso botão custom */
+    [data-testid="stFileUploader"] section {
         background: linear-gradient(135deg, #0e3b5e, #007EA7);
         color: #ffffff;
         border: none;
         border-radius: 12px;
-        padding: 14px 18px;
-        font-size: 1rem;
-        font-weight: 700;
+        height: 56px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
         cursor: pointer;
+        font-weight: 700;
+        font-size: 1rem;
         box-shadow: 0 6px 16px rgba(0,0,0,0.16);
         transition: transform 0.08s ease, box-shadow 0.25s ease, filter 0.25s ease;
-        user-select: none;
+        padding: 0 18px;
+        min-width: 280px;
     }
-    .custom-upload:hover {
+    [data-testid="stFileUploader"] section:hover {
         transform: translateY(-1px);
         box-shadow: 0 10px 22px rgba(0,0,0,0.20);
         filter: brightness(1.03);
     }
-    .custom-upload:active {
+    [data-testid="stFileUploader"] section:active {
         transform: translateY(0);
         box-shadow: 0 6px 16px rgba(0,0,0,0.16);
         filter: brightness(0.98);
     }
-    .custom-upload .icon-wrap {
-        display: grid;
-        place-items: center;
+
+    /* Some elementos internos que poluem (texto de arrastar, limites, etc.) */
+    [data-testid="stFileUploader"] section > div:first-child,
+    [data-testid="stFileUploader"] small,
+    [data-testid="stFileUploader"] ul {
+        display: none !important;
+    }
+
+    /* Insere nosso rótulo e ícone */
+    [data-testid="stFileUploader"] section::before {
+        content: "📄";
+        display: inline-block;
         width: 34px;
         height: 34px;
         background: rgba(255,255,255,0.18);
         border-radius: 10px;
+        display: grid;
+        place-items: center;
+        font-size: 1.1rem;
     }
-    .custom-upload .label-wrap {
-        display: flex;
-        flex-direction: column;
-        line-height: 1.1;
-    }
-    .custom-upload .label-main {
-        letter-spacing: 0.3px;
-    }
-    .custom-upload .label-sub {
-        font-size: 0.78rem;
-        font-weight: 600;
-        opacity: 0.85;
+    [data-testid="stFileUploader"] section::after {
+        content: "Carregar arquivo PDF";
+        display: inline-block;
+        letter-spacing: 0.2px;
+        margin-left: 8px;
     }
 
-    /* Nome do arquivo selecionado */
+    /* Nome do arquivo carregado */
     .file-name {
         margin-top: 10px;
         font-weight: 700;
@@ -131,16 +139,6 @@ st.markdown("""
         border-radius: 8px;
     }
 </style>
-""", unsafe_allow_html=True)
-
-# ===== JS: Clicar no botão custom aciona o input do uploader nativo =====
-st.markdown("""
-<script>
-function triggerUploader() {
-    const uploader = window.parent.document.querySelector('[data-testid="stFileUploader"] input[type="file"]');
-    if (uploader) { uploader.click(); }
-}
-</script>
 """, unsafe_allow_html=True)
 
 # ===== Lógica de Processamento =====
@@ -266,21 +264,10 @@ st.markdown('<div class="main-card">', unsafe_allow_html=True)
 st.markdown("<h1>Processador de Teleterapia</h1>", unsafe_allow_html=True)
 st.markdown('<div class="subtitle">Extração automática de dados de planejamento clínico</div>', unsafe_allow_html=True)
 
-# Uploader nativo escondido (para funcionalidade real)
-uploaded_file = st.file_uploader(" ", type=["pdf"])
-
-# Botão custom que não tem nada a ver com o padrão
-st.markdown("""
-<div style="display:flex; justify-content:center; margin-bottom: 8px;">
-    <button class="custom-upload" onclick="triggerUploader()">
-        <span class="icon-wrap">📄</span>
-        <span class="label-wrap">
-            <span class="label-main">Carregar arquivo PDF</span>
-            <span class="label-sub">Clique para selecionar</span>
-        </span>
-    </button>
-</div>
-""", unsafe_allow_html=True)
+# Uploader nativo, centralizado e com aparência de botão custom
+st.markdown('<div class="uploader-wrapper">', unsafe_allow_html=True)
+uploaded_file = st.file_uploader("", type=["pdf"], label_visibility="collapsed")
+st.markdown('</div>', unsafe_allow_html=True)
 
 # Feedback quando arquivo é carregado
 if uploaded_file:
