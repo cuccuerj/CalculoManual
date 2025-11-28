@@ -6,45 +6,273 @@ from io import BytesIO
 st.set_page_config(
     page_title="Processador de PDFs de Teleterapia",
     page_icon="🏥",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# CSS customizado
+# CSS futurista e moderno
 st.markdown("""
 <style>
-    .main-header {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #1f77b4;
-        text-align: center;
-        margin-bottom: 1rem;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+    
+    * {
+        font-family: 'Inter', sans-serif;
     }
+    
+    .stApp {
+        background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+    }
+    
+    .main-header {
+        font-size: 3.5rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-align: center;
+        margin-bottom: 0.5rem;
+        text-shadow: 0 0 30px rgba(102, 126, 234, 0.3);
+        animation: glow 2s ease-in-out infinite alternate;
+    }
+    
+    @keyframes glow {
+        from {
+            filter: drop-shadow(0 0 10px rgba(102, 126, 234, 0.5));
+        }
+        to {
+            filter: drop-shadow(0 0 20px rgba(118, 75, 162, 0.8));
+        }
+    }
+    
     .sub-header {
         font-size: 1.2rem;
-        color: #666;
+        color: #a0aec0;
         text-align: center;
-        margin-bottom: 2rem;
+        margin-bottom: 3rem;
+        font-weight: 300;
     }
-    .stTextArea textarea {
-        font-family: 'Courier New', monospace;
+    
+    .glass-card {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: 2rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        margin: 1rem 0;
+    }
+    
+    .metric-card {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
+        padding: 1.5rem;
+        border: 1px solid rgba(102, 126, 234, 0.2);
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 40px rgba(102, 126, 234, 0.4);
+        border-color: rgba(102, 126, 234, 0.5);
+    }
+    
+    .metric-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin: 0.5rem 0;
+    }
+    
+    .metric-label {
         font-size: 0.9rem;
+        color: #a0aec0;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 600;
     }
+    
     .success-box {
-        padding: 1rem;
-        border-radius: 0.5rem;
-        background-color: #d4edda;
-        border: 1px solid #c3e6cb;
-        color: #155724;
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
+        padding: 1.5rem;
+        border-left: 4px solid #10b981;
+        color: #6ee7b7;
+        margin: 1rem 0;
+        animation: slideIn 0.5s ease-out;
+    }
+    
+    @keyframes slideIn {
+        from {
+            transform: translateX(-20px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    .stTextArea textarea {
+        background: rgba(0, 0, 0, 0.3) !important;
+        border: 1px solid rgba(102, 126, 234, 0.3) !important;
+        border-radius: 15px !important;
+        color: #e2e8f0 !important;
+        font-family: 'Courier New', monospace !important;
+        font-size: 0.9rem !important;
+        backdrop-filter: blur(10px);
+    }
+    
+    .stTextArea textarea:focus {
+        border-color: rgba(102, 126, 234, 0.6) !important;
+        box-shadow: 0 0 20px rgba(102, 126, 234, 0.3) !important;
+    }
+    
+    .stButton button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 12px !important;
+        padding: 0.75rem 2rem !important;
+        font-weight: 600 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 1px !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
+    }
+    
+    .stButton button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 25px rgba(102, 126, 234, 0.6) !important;
+    }
+    
+    .stDownloadButton button {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 12px !important;
+        padding: 0.75rem 2rem !important;
+        font-weight: 600 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 1px !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 15px rgba(240, 147, 251, 0.4) !important;
+    }
+    
+    .stDownloadButton button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 25px rgba(240, 147, 251, 0.6) !important;
+    }
+    
+    .upload-box {
+        background: rgba(255, 255, 255, 0.03);
+        border: 2px dashed rgba(102, 126, 234, 0.4);
+        border-radius: 20px;
+        padding: 3rem;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+    
+    .upload-box:hover {
+        border-color: rgba(102, 126, 234, 0.8);
+        background: rgba(102, 126, 234, 0.05);
+        transform: scale(1.02);
+    }
+    
+    .stExpander {
+        background: rgba(255, 255, 255, 0.03) !important;
+        border-radius: 15px !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    }
+    
+    .debug-panel {
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(102, 126, 234, 0.3);
+        border-radius: 15px;
+        padding: 1.5rem;
         margin: 1rem 0;
     }
-    .debug-box {
-        padding: 1rem;
-        border-radius: 0.5rem;
-        background-color: #f8f9fa;
-        border: 1px solid #dee2e6;
-        margin: 1rem 0;
-        font-family: monospace;
-        font-size: 0.85rem;
+    
+    .info-icon {
+        display: inline-block;
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.6;
+        }
+    }
+    
+    div[data-testid="stFileUploader"] {
+        background: rgba(255, 255, 255, 0.03);
+        border: 2px dashed rgba(102, 126, 234, 0.4);
+        border-radius: 20px;
+        padding: 2rem;
+        transition: all 0.3s ease;
+    }
+    
+    div[data-testid="stFileUploader"]:hover {
+        border-color: rgba(102, 126, 234, 0.8);
+        background: rgba(102, 126, 234, 0.05);
+    }
+    
+    .sidebar .sidebar-content {
+        background: rgba(15, 12, 41, 0.8);
+        backdrop-filter: blur(10px);
+    }
+    
+    h1, h2, h3 {
+        color: #e2e8f0 !important;
+    }
+    
+    p, li, label {
+        color: #cbd5e0 !important;
+    }
+    
+    .stAlert {
+        background: rgba(59, 130, 246, 0.1) !important;
+        border-left: 4px solid #3b82f6 !important;
+        border-radius: 12px !important;
+        color: #93c5fd !important;
+    }
+    
+    code {
+        background: rgba(0, 0, 0, 0.4) !important;
+        color: #a78bfa !important;
+        padding: 0.2rem 0.4rem !important;
+        border-radius: 6px !important;
+    }
+    
+    .footer {
+        text-align: center;
+        padding: 2rem;
+        color: #718096;
+        font-size: 0.9rem;
+        margin-top: 3rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .status-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #10b981;
+        margin-right: 8px;
+        animation: blink 1.5s infinite;
+    }
+    
+    @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -81,20 +309,18 @@ def extract_filtros(content):
 
 def extract_fluencia_values(content):
     """Extrai valores de fluência (fsx e fsy) para cada campo"""
-    # Busca por padrão: "fluência total: fsx = XXX mm, fsy = YYY mm"
     pattern = r'fluência total:\s*fsx\s*=\s*(\d+)\s*mm,\s*fsy\s*=\s*(\d+)\s*mm'
     matches = re.findall(pattern, content)
     return matches
 
 def process_pdf_content(content):
     """Processa o conteúdo do PDF e extrai os dados estruturados"""
-    # Normalizar espaços
     content = ' '.join(content.split())
     
     output = []
     debug_info = {}
     
-    # ===== EXTRAIR INFORMAÇÕES DO PACIENTE =====
+    # EXTRAIR INFORMAÇÕES DO PACIENTE
     paciente_match = re.search(r'Nome do Paciente:\s*(.+?)(?=\s*Matricula)', content)
     matricula_match = re.search(r'Matricula:\s*(\d+)', content)
     
@@ -107,35 +333,35 @@ def process_pdf_content(content):
         output.append(f"Matricula:, '{matricula_match.group(1)}'")
         debug_info['matricula'] = matricula_match.group(1)
     
-    # ===== EXTRAIR ENERGIA DOS CAMPOS =====
+    # EXTRAIR ENERGIA DOS CAMPOS
     energy_matches = re.findall(r'Campo (\d+)\s+(\d+X)', content)
     energias = [e[1] for e in energy_matches]
     debug_info['energias'] = energias
     num_campos = len(energias)
     
-    # ===== EXTRAIR TAMANHOS DOS CAMPOS =====
+    # EXTRAIR TAMANHOS DOS CAMPOS
     x_sizes = extract_field(content, 'Tamanho do Campo Aberto X', 'Tamanho do Campo Aberto Y')
     y_sizes = extract_field(content, 'Tamanho do Campo Aberto Y', 'Jaw Y1')
     debug_info['x_sizes'] = x_sizes
     debug_info['y_sizes'] = y_sizes
     
-    # ===== EXTRAIR JAW =====
+    # EXTRAIR JAW
     jaw_y1 = extract_jaw(content, 'Jaw Y1', 'Jaw Y2', 'Y1:')
     jaw_y2 = extract_jaw(content, 'Jaw Y2', 'Filtro', 'Y2:')
     debug_info['jaw_y1'] = jaw_y1
     debug_info['jaw_y2'] = jaw_y2
     
-    # ===== EXTRAIR FILTROS =====
+    # EXTRAIR FILTROS
     filtros = extract_filtros(content)
     debug_info['filtros'] = filtros
     
-    # ===== EXTRAIR UM E DOSE =====
+    # EXTRAIR UM E DOSE
     um_matches = re.findall(r'Campo \d+\s+(\d+)\s*UM', content)
     dose_matches = re.findall(r'Campo \d+\s+([\d.]+)\s*cGy', content)
     debug_info['um_matches'] = um_matches
     debug_info['dose_matches'] = dose_matches
     
-    # ===== EXTRAIR SSD E PROFUNDIDADES =====
+    # EXTRAIR SSD E PROFUNDIDADES
     ssd = extract_field(content, 'SSD', 'Profundidade')
     prof = extract_field(content, 'Profundidade', 'Profundidade Efetiva')
     prof_eff = extract_field(content, 'Profundidade Efetiva', 'Informações do Campo')
@@ -143,34 +369,29 @@ def process_pdf_content(content):
     debug_info['prof'] = prof
     debug_info['prof_eff'] = prof_eff
     
-    # ===== EXTRAIR UNIDADE DE TRATAMENTO =====
-    # Buscar todas as ocorrências de "Unidade de tratamento"
+    # EXTRAIR UNIDADE DE TRATAMENTO
     unidade_pattern = r'Unidade de tratamento:\s*([^,]+),\s*energia:\s*(\S+)'
     unidades = re.findall(unidade_pattern, content)
     
     if unidades:
-        # Pegar a primeira unidade (geralmente todas são iguais)
         unidade, energia_unidade = unidades[0]
         formatted = f"Informações:, 'Unidade, 'de, 'tratamento:, '{unidade.strip()},, 'energia:, '{energia_unidade.strip()}'"
         output.append(formatted)
         debug_info['unidade'] = unidade.strip()
     
-    # ===== EXTRAIR FLUÊNCIA =====
+    # EXTRAIR FLUÊNCIA
     fluencia_matches = extract_fluencia_values(content)
     debug_info['fluencia_matches'] = fluencia_matches
     
-    # Criar listas fx e fy baseadas no número de campos
     fx = []
     fy = []
     
     fluencia_idx = 0
     for i in range(num_campos):
-        # Se o campo tem filtro (filtro != '-'), usar "-"
         if i < len(filtros) and filtros[i] != '-':
             fx.append("-")
             fy.append("-")
         else:
-            # Se tem dados de fluência disponíveis, usar
             if fluencia_idx < len(fluencia_matches):
                 fsx, fsy = fluencia_matches[fluencia_idx]
                 fx.append(fsx)
@@ -183,7 +404,7 @@ def process_pdf_content(content):
     debug_info['fx'] = fx
     debug_info['fy'] = fy
     
-    # ===== MONTAR LINHAS DOS CAMPOS =====
+    # MONTAR LINHAS DOS CAMPOS
     for i in range(num_campos):
         linha_parts = []
         linha_parts.append(energias[i] if i < len(energias) else 'N/A')
@@ -205,33 +426,49 @@ def process_pdf_content(content):
     
     return '\n'.join(output), debug_info
 
-# ===== INTERFACE DO STREAMLIT =====
-st.markdown('<div class="main-header">🏥 Processador de PDFs de Teleterapia</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Extraia dados estruturados de planejamentos de teleterapia</div>', unsafe_allow_html=True)
+# INTERFACE DO STREAMLIT
+st.markdown('<div class="main-header">⚡ TELETERAPIA PRO</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">Sistema avançado de processamento de PDFs de planejamento radioterápico</div>', unsafe_allow_html=True)
 
-# Informações sobre o sistema
-with st.expander("ℹ️ Sobre este sistema"):
+# Sidebar
+with st.sidebar:
+    st.markdown("### ⚙️ Configurações")
+    show_debug = st.checkbox("🔍 Modo Debug", value=False)
+    st.markdown("---")
+    st.markdown("### 📊 Status do Sistema")
+    st.markdown('<span class="status-indicator"></span> Sistema Online', unsafe_allow_html=True)
+    st.markdown("---")
     st.markdown("""
-    Este sistema processa arquivos PDF de planejamento de teleterapia e extrai:
-    - **Dados do Paciente**: Nome e Matrícula
-    - **Informações da Unidade**: Equipamento e Energia
-    - **Dados dos Campos**: Tamanho, Jaw, Filtros, UM, Dose, SSD, Profundidade
-    - **Fluência**: Valores fsx e fsy (quando não há filtro)
-    
-    ⚠️ **Nota**: Campos com filtros apresentam "-" nos valores de fluência.
+    ### 💡 Recursos
+    - ✨ Extração automática
+    - 🎯 Alta precisão
+    - 🚀 Processamento rápido
+    - 🔒 Seguro e confiável
     """)
 
-# Opção de debug
-show_debug = st.sidebar.checkbox("🔍 Mostrar informações de debug", value=False)
+# Informações sobre o sistema
+with st.expander("ℹ️ Sobre o Sistema"):
+    st.markdown("""
+    ### 🏥 Processador de Planejamento Radioterápico
+    
+    **Funcionalidades:**
+    - 📋 **Dados do Paciente**: Nome e Matrícula
+    - 🎛️ **Unidade de Tratamento**: Equipamento e Energia
+    - 🎯 **Campos de Tratamento**: Geometria e parâmetros
+    - 📊 **Dosimetria**: UM, Dose, SSD, Profundidades
+    - 🌊 **Fluência**: Valores fsx e fsy
+    
+    > ⚠️ Campos com filtros apresentam "-" nos valores de fluência
+    """)
 
 # Upload de arquivo
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    uploaded_file = st.file_uploader(
-        "📁 Selecione o arquivo PDF",
-        type="pdf",
-        help="Faça upload do PDF de planejamento de teleterapia"
-    )
+st.markdown("### 📁 Upload de Arquivo")
+uploaded_file = st.file_uploader(
+    "Arraste e solte o arquivo PDF aqui",
+    type="pdf",
+    help="Selecione o PDF de planejamento de teleterapia",
+    label_visibility="collapsed"
+)
 
 if uploaded_file is not None:
     try:
@@ -246,29 +483,49 @@ if uploaded_file is not None:
             result, debug_info = process_pdf_content(content)
         
         # Exibir resultados
-        st.markdown('<div class="success-box">✅ Arquivo processado com sucesso!</div>', unsafe_allow_html=True)
+        st.markdown('<div class="success-box">✅ <strong>Processamento Concluído!</strong> Todos os dados foram extraídos com sucesso.</div>', unsafe_allow_html=True)
         
         # Estatísticas do processamento
+        st.markdown("### 📊 Estatísticas de Processamento")
         col1, col2, col3 = st.columns(3)
+        
         num_linhas = len(result.split('\n'))
         num_campos = len(debug_info.get('energias', []))
         
         with col1:
-            st.metric("📄 Total de Linhas", num_linhas)
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">📄 Linhas Extraídas</div>
+                <div class="metric-value">{num_linhas}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
         with col2:
-            st.metric("🎯 Campos Detectados", num_campos)
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">🎯 Campos Detectados</div>
+                <div class="metric-value">{num_campos}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
         with col3:
-            st.metric("📋 Páginas no PDF", len(pdf_reader.pages))
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">📋 Páginas no PDF</div>
+                <div class="metric-value">{len(pdf_reader.pages)}</div>
+            </div>
+            """, unsafe_allow_html=True)
         
         # Mostrar debug se habilitado
         if show_debug:
             st.markdown("---")
-            st.subheader("🔍 Informações de Debug")
+            st.markdown("### 🔍 Painel de Debug")
             
             col1, col2 = st.columns(2)
             
             with col1:
-                st.markdown("**Dados Extraídos:**")
+                st.markdown('<div class="debug-panel">', unsafe_allow_html=True)
+                st.markdown("**🎯 Dados Principais**")
                 st.json({
                     "Energias": debug_info.get('energias', []),
                     "X Sizes": debug_info.get('x_sizes', []),
@@ -277,28 +534,32 @@ if uploaded_file is not None:
                     "Jaw Y2": debug_info.get('jaw_y2', []),
                     "Filtros": debug_info.get('filtros', [])
                 })
+                st.markdown('</div>', unsafe_allow_html=True)
             
             with col2:
-                st.markdown("**Dados Complementares:**")
+                st.markdown('<div class="debug-panel">', unsafe_allow_html=True)
+                st.markdown("**📊 Dados Complementares**")
                 st.json({
                     "UM": debug_info.get('um_matches', []),
                     "Dose": debug_info.get('dose_matches', []),
                     "SSD": debug_info.get('ssd', []),
-                    "Prof": debug_info.get('prof', []),
-                    "Prof Eff": debug_info.get('prof_eff', []),
+                    "Profundidade": debug_info.get('prof', []),
+                    "Prof. Efetiva": debug_info.get('prof_eff', []),
                     "FX": debug_info.get('fx', []),
                     "FY": debug_info.get('fy', [])
                 })
+                st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown("---")
         
         # Dados extraídos
-        st.subheader("📊 Dados Extraídos")
+        st.markdown("### 📊 Dados Extraídos")
         st.text_area(
-            "Resultado",
+            "Resultado do Processamento",
             result,
             height=400,
-            help="Dados extraídos do PDF em formato estruturado"
+            help="Dados estruturados extraídos do PDF",
+            label_visibility="collapsed"
         )
         
         # Botões de ação
@@ -307,52 +568,48 @@ if uploaded_file is not None:
             st.download_button(
                 label="💾 Baixar Resultados",
                 data=result,
-                file_name=f"dados_teleterapia_{uploaded_file.name.replace('.pdf', '')}.txt",
+                file_name=f"teleterapia_{uploaded_file.name.replace('.pdf', '')}.txt",
                 mime="text/plain",
                 use_container_width=True
             )
         with col2:
-            if st.button("🔄 Processar Outro", use_container_width=True):
+            if st.button("🔄 Novo Arquivo", use_container_width=True):
                 st.rerun()
         
     except Exception as e:
-        st.error(f"❌ Ocorreu um erro ao processar o arquivo:")
+        st.error(f"❌ Erro no Processamento")
         st.exception(e)
         
-        # Mostrar conteúdo bruto para debug
         if show_debug and 'content' in locals():
-            with st.expander("📄 Conteúdo bruto do PDF"):
+            with st.expander("📄 Conteúdo Bruto do PDF"):
                 st.text_area("Texto extraído", content, height=300)
 else:
     # Instruções quando não há arquivo
-    st.info("👆 Faça upload de um arquivo PDF para começar o processamento")
+    st.info("👆 Faça upload de um arquivo PDF para iniciar o processamento")
     
     # Exemplo de formato esperado
-    with st.expander("📖 Formato esperado do PDF"):
-        st.markdown("""
-        O PDF deve conter as seguintes informações:
-        ```
-        Nome do Paciente: [Nome]
-        Matricula: [Número]
-        
-        Energia
-        Campo 1 6X
-        Campo 2 10X
-        
-        Tamanho do Campo Aberto X
-        Campo 1 18.0 cm
-        Campo 2 18.0 cm
-        
-        [... outros campos ...]
-        
-        Informações: Unidade de tratamento: 2100C, energia: 6X
-        fluência total: fsx = 158 mm, fsy = 148 mm
-        ```
-        """)
+    with st.expander("📖 Formato Esperado do PDF"):
+        st.code("""
+Nome do Paciente: [Nome Completo]
+Matricula: [Número]
+
+Energia
+Campo 1 6X
+Campo 2 10X
+
+Tamanho do Campo Aberto X
+Campo 1 18.0 cm
+Campo 2 18.0 cm
+
+Tamanho do Campo Aberto Y
+Campo 1 15.2 cm
+Campo 2 15.9 cm
+
+[... outros campos ...]
+
+Informações: Unidade de tratamento: 2100C, energia: 6X
+fluência total: fsx = 158 mm, fsy = 148 mm
+        """, language="text")
 
 # Rodapé
-st.markdown("---")
-st.markdown(
-    "<div style='text-align: center; color: #666; font-size: 0.9rem;'>Desenvolvido para processamento de dados de Teleterapia | Ative o modo Debug no menu lateral para diagnósticos</div>",
-    unsafe_allow_html=True
-)
+st.markdown('<div class="footer">⚡ TELETERAPIA PRO v1.0 | Desenvolvido para Excelência em Radioterapia</div>', unsafe_allow_html=True)
