@@ -252,7 +252,8 @@ with col2:
     uploaded_file = st.file_uploader(
         "📁 Selecione o arquivo PDF",
         type="pdf",
-        help="Faça upload do PDF de planejamento de teleterapia"
+        help="Faça upload do PDF de planejamento de teleterapia",
+        label_visibility = "collapsed"
     )
 
 if uploaded_file is not None:
