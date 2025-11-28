@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ===== CSS: Uploader com visual de botão minimalista =====
+# ===== CSS: limpa faixa branca, centraliza e minimaliza o uploader =====
 st.markdown("""
 <style>
     /* Fundo e card */
@@ -22,7 +22,7 @@ st.markdown("""
         border-radius: 16px;
         box-shadow: 0 6px 24px rgba(17, 24, 39, 0.06);
         margin: 3rem auto 2rem auto;
-        max-width: 880px;
+        max-width: 860px;
     }
 
     /* Títulos */
@@ -37,71 +37,81 @@ st.markdown("""
         text-align: center;
         color: #6c757d;
         font-size: .98rem;
-        margin-bottom: 1.6rem;
+        margin-bottom: 1.2rem;
     }
 
-    /* Wrapper do uploader para centralizar */
+    /* Wrapper para centralizar o uploader e controlar largura */
     .uploader-wrapper {
         display: flex;
         justify-content: center;
-        margin: .4rem 0 1rem 0;
+        align-items: center;
+        margin: 0.6rem 0 1rem 0;
+    }
+    .uploader-inner {
+        width: 100%;
+        max-width: 360px; /* controla a largura do botão */
     }
 
-    /* Remove label padrão e textos internos redundantes */
+    /* Remove label padrão e QUALQUER faixa/linha interna que cria espaços */
     [data-testid="stFileUploader"] label { display: none !important; }
+    [data-testid="stFileUploader"] div[aria-live="polite"] { display: none !important; } /* mensagens internas */
     [data-testid="stFileUploader"] small,
     [data-testid="stFileUploader"] ul,
     [data-testid="stFileUploader"] section > div:first-child {
         display: none !important;
     }
 
-    /* Área clicável vira botão minimalista */
+    /* Zera margens/padding que criavam a faixa branca */
     [data-testid="stFileUploader"] section {
-        background: #ffffff;
-        color: #0e3b5e;
-        border: 2px solid #0e86c7; /* azul suave */
-        border-radius: 12px;
-        min-height: 52px;
-        min-width: 280px;
-        padding: 0 18px;
-        display: inline-flex;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+    }
+
+    /* Transformar a área clicável em UM botão minimalista */
+    [data-testid="stFileUploader"] section::before,
+    [data-testid="stFileUploader"] section::after {
+        all: unset;
+    }
+    [data-testid="stFileUploader"] section {
+        display: inline-flex !important;
+        width: 100% !important;
+        min-height: 48px;
         align-items: center;
         justify-content: center;
-        gap: 10px;
         cursor: pointer;
+        border: 2px solid #0b6fa2;
+        border-radius: 12px;
+        background: #ffffff;
+        color: #0b6fa2;
         font-weight: 700;
         font-size: 1rem;
-        transition: border-color .2s ease, box-shadow .2s ease, transform .06s ease, background .2s ease;
-        box-shadow: 0 2px 10px rgba(14, 134, 199, 0.08);
+        letter-spacing: .2px;
+        transition: border-color .18s ease, box-shadow .18s ease, transform .06s ease, background .18s ease;
+        box-shadow: 0 2px 10px rgba(11, 111, 162, 0.08);
     }
     [data-testid="stFileUploader"] section:hover {
-        border-color: #0b6fa2;
-        box-shadow: 0 6px 18px rgba(14, 134, 199, 0.14);
+        border-color: #095a85;
+        box-shadow: 0 6px 18px rgba(11, 111, 162, 0.14);
         transform: translateY(-1px);
         background: #fbfdff;
     }
     [data-testid="stFileUploader"] section:active {
         transform: translateY(0);
-        box-shadow: 0 3px 10px rgba(14, 134, 199, 0.10);
+        box-shadow: 0 3px 10px rgba(11, 111, 162, 0.10);
     }
 
-    /* Ícone e rótulo personalizados */
+    /* Ícone discreto à esquerda do texto */
     [data-testid="stFileUploader"] section::before {
         content: "📄";
-        display: inline-block;
-        width: 34px;
-        height: 34px;
-        border-radius: 10px;
-        background: #eaf6fd;
-        color: #0b6fa2;
-        display: grid;
-        place-items: center;
+        margin-right: 8px;
         font-size: 1.1rem;
     }
+    /* Rótulo do botão */
     [data-testid="stFileUploader"] section::after {
         content: "Selecionar PDF";
-        display: inline-block;
-        letter-spacing: .2px;
     }
 
     /* Nome do arquivo carregado */
@@ -112,7 +122,7 @@ st.markdown("""
         text-align: center;
     }
 
-    /* Botões de download coerentes com o tema */
+    /* Botões de download */
     .stDownloadButton button {
         background-color: #ffffff;
         color: #0b6fa2;
@@ -261,10 +271,10 @@ st.markdown('<div class="main-card">', unsafe_allow_html=True)
 st.markdown("<h1>Processador de Teleterapia</h1>", unsafe_allow_html=True)
 st.markdown('<div class="subtitle">Extração automática de dados de planejamento clínico</div>', unsafe_allow_html=True)
 
-# Uploader centralizado com visual minimalista
-st.markdown('<div class="uploader-wrapper">', unsafe_allow_html=True)
+# Uploader centralizado, sem faixa branca, com botão único
+st.markdown('<div class="uploader-wrapper"><div class="uploader-inner">', unsafe_allow_html=True)
 uploaded_file = st.file_uploader("", type=["pdf"], label_visibility="collapsed")
-st.markdown('</div>', unsafe_allow_html=True)
+st.markdown('</div></div>', unsafe_allow_html=True)
 
 # Feedback quando arquivo é carregado
 if uploaded_file:
