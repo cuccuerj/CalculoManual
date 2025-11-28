@@ -11,13 +11,11 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ===== CSS Minimalista e Limpo =====
+# ===== CSS Global =====
 st.markdown("""
 <style>
-    /* Fundo geral */
     .stApp { background-color: #f0f2f6; }
 
-    /* Container Principal (Card Effect) */
     .main-card {
         background-color: white;
         padding: 2rem;
@@ -29,10 +27,8 @@ st.markdown("""
         margin-right: auto;
     }
 
-    /* Títulos */
     h1 {
         color: #0e3b5e;
-        font-family: 'Segoe UI', sans-serif;
         font-weight: 700;
         font-size: 2.1rem;
         text-align: center;
@@ -45,42 +41,72 @@ st.markdown("""
         margin-bottom: 1.5rem;
     }
 
-    /* ===== Botão de Upload Simples ===== */
-    /* Remove elementos extras */
-    [data-testid='stFileUploader'] section > div:first-child,
-    [data-testid='stFileUploader'] section + div,
-    [data-testid='stFileUploader'] small,
-    [data-testid='stFileUploader'] ul {
-        display: none !important;
+    /* ===== Esconde COMPLETAMENTE o uploader nativo ===== */
+    [data-testid="stFileUploader"] {
+        position: absolute !important;
+        width: 1px !important;
+        height: 1px !important;
+        overflow: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        z-index: -1 !important;
     }
-    /* Área clicável como botão */
-    [data-testid='stFileUploader'] section {
-        background-color: #007EA7;
-        color: white;
-        border-radius: 10px;
-        height: 46px;
-        display: flex;
+
+    /* ===== Botão 100% novo (não parece com o padrão do Streamlit) ===== */
+    .custom-upload {
+        display: inline-flex;
         align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        font-weight: 600;
-        font-size: 1rem;
-        transition: background-color 0.25s ease, transform 0.1s ease;
+        gap: 12px;
+        background: linear-gradient(135deg, #0e3b5e, #007EA7);
+        color: #ffffff;
         border: none;
-        padding: 0;
-        margin: 0;
-        box-shadow: 0 3px 8px rgba(0, 126, 167, 0.18);
+        border-radius: 12px;
+        padding: 14px 18px;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 6px 16px rgba(0,0,0,0.16);
+        transition: transform 0.08s ease, box-shadow 0.25s ease, filter 0.25s ease;
+        user-select: none;
     }
-    [data-testid='stFileUploader'] section:hover {
-        background-color: #005f7f;
+    .custom-upload:hover {
         transform: translateY(-1px);
+        box-shadow: 0 10px 22px rgba(0,0,0,0.20);
+        filter: brightness(1.03);
     }
-    [data-testid='stFileUploader'] section::after {
-        content: "Carregar PDF";
-        display: block;
-        width: 100%;
+    .custom-upload:active {
+        transform: translateY(0);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.16);
+        filter: brightness(0.98);
+    }
+    .custom-upload .icon-wrap {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        background: rgba(255,255,255,0.18);
+        border-radius: 10px;
+    }
+    .custom-upload .label-wrap {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.1;
+    }
+    .custom-upload .label-main {
+        letter-spacing: 0.3px;
+    }
+    .custom-upload .label-sub {
+        font-size: 0.78rem;
+        font-weight: 600;
+        opacity: 0.85;
+    }
+
+    /* Nome do arquivo selecionado */
+    .file-name {
+        margin-top: 10px;
+        font-weight: 700;
+        color: #0e3b5e;
         text-align: center;
-        letter-spacing: 0.2px;
     }
 
     /* Botões de download */
@@ -97,10 +123,6 @@ st.markdown("""
         color: white;
     }
 
-    /* Dataframe */
-    .stDataFrame { border-radius: 10px; overflow: hidden; }
-
-    /* Text Area Style */
     .stTextArea textarea {
         font-family: 'Consolas', 'Courier New', monospace;
         font-size: 0.9rem;
@@ -109,6 +131,16 @@ st.markdown("""
         border-radius: 8px;
     }
 </style>
+""", unsafe_allow_html=True)
+
+# ===== JS: Clicar no botão custom aciona o input do uploader nativo =====
+st.markdown("""
+<script>
+function triggerUploader() {
+    const uploader = window.parent.document.querySelector('[data-testid="stFileUploader"] input[type="file"]');
+    if (uploader) { uploader.click(); }
+}
+</script>
 """, unsafe_allow_html=True)
 
 # ===== Lógica de Processamento =====
@@ -134,7 +166,6 @@ class TeletherapyExtractor:
     def process(self):
         c = self.clean_content
 
-        # Extrações Básicas
         nome = self._extract_regex(r'Nome do Paciente:\s*(.+?)(?=\s*Matricula)')
         matricula = self._extract_regex(r'Matricula:\s*(\d+)')
 
@@ -142,12 +173,10 @@ class TeletherapyExtractor:
         unidade = unidade_match.group(1).strip() if unidade_match else "N/A"
         energia_unidade = unidade_match.group(2).strip() if unidade_match else "N/A"
 
-        # Campos
         campos_raw = re.findall(r'Campo (\d+)\s+(\d+X)', c)
         energias_campos = [item[1] for item in campos_raw]
         num_campos = len(energias_campos)
 
-        # Blocos
         block_x = self._get_block('Tamanho do Campo Aberto X', 'Tamanho do Campo Aberto Y')
         block_y = self._get_block('Tamanho do Campo Aberto Y', 'Jaw Y1')
         block_jaw_y1 = self._get_block('Jaw Y1', 'Jaw Y2')
@@ -177,7 +206,6 @@ class TeletherapyExtractor:
             block_eff = self._get_block('Profundidade Efetiva', 'Campo 1')
         prof_eff_vals = get_vals(block_eff, r'Campo \d+\s*([\d.]+)\s*cm')
 
-        # Fluência Tolerante a Falhas
         fluencia_matches = re.findall(
             r'flu[eê]ncia\s+total.*?fsx\s*[a-zA-Z]*\s*=\s*([\d\.]+)\s*mm,\s*fsy\s*[a-zA-Z]*\s*=\s*([\d\.]+)\s*mm',
             c, re.IGNORECASE | re.DOTALL
@@ -192,12 +220,10 @@ class TeletherapyExtractor:
             output_lines.append(f"Informações:, 'Unidade, 'de, 'tratamento:, '{unidade},, 'energia:, '{energia_unidade}'")
 
         table_data = []
-
         for i in range(num_campos):
             def safe(lst, idx, p="'"):
                 return f"{p}{lst[idx]}" if idx < len(lst) else "'N/A"
 
-            # Fluência: só se não houver filtro
             f_x_val, f_y_val = "'-", "'-"
             has_filtro = False
             if i < len(filtros) and filtros[i] != '-' and str(filtros[i]).lower() != 'nan':
@@ -235,19 +261,30 @@ class TeletherapyExtractor:
         ])
         return "\n".join(output_lines), df, nome
 
-# ===== Interface do Usuário =====
+# ===== Interface =====
 st.markdown('<div class="main-card">', unsafe_allow_html=True)
 st.markdown("<h1>Processador de Teleterapia</h1>", unsafe_allow_html=True)
 st.markdown('<div class="subtitle">Extração automática de dados de planejamento clínico</div>', unsafe_allow_html=True)
 
-uploaded_file = st.file_uploader("", type="pdf")
+# Uploader nativo escondido (para funcionalidade real)
+uploaded_file = st.file_uploader(" ", type=["pdf"])
 
+# Botão custom que não tem nada a ver com o padrão
+st.markdown("""
+<div style="display:flex; justify-content:center; margin-bottom: 8px;">
+    <button class="custom-upload" onclick="triggerUploader()">
+        <span class="icon-wrap">📄</span>
+        <span class="label-wrap">
+            <span class="label-main">Carregar arquivo PDF</span>
+            <span class="label-sub">Clique para selecionar</span>
+        </span>
+    </button>
+</div>
+""", unsafe_allow_html=True)
+
+# Feedback quando arquivo é carregado
 if uploaded_file:
-    st.markdown(f"""
-    <div style="text-align:center; margin-top:10px; color:#28a745; font-weight:bold;">
-        ✅ Arquivo carregado: <span style="font-weight:800;">{uploaded_file.name}</span>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f'<div class="file-name">✅ Arquivo carregado: {uploaded_file.name}</div>', unsafe_allow_html=True)
 
     try:
         reader = PyPDF2.PdfReader(uploaded_file)
