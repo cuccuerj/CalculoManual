@@ -8,11 +8,11 @@ import pandas as pd
 st.set_page_config(
     page_title="Processador de Teleterapia",
     page_icon="🏥",
-    layout="centered", # Layout centralizado fica mais elegante para ferramentas de upload único
+    layout="centered",
     initial_sidebar_state="collapsed"
 )
 
-# ===== CSS Premium e Limpo =====
+# ===== CSS Premium e Limpo (Ajustado) =====
 st.markdown("""
 <style>
     /* Fundo geral */
@@ -47,12 +47,13 @@ st.markdown("""
 
     /* --- HACK SUPREMO DO UPLOADER --- */
     
-    /* 1. Esconde a etiqueta "Drag and drop file here" e o ícone padrão */
+    /* 1. Esconde o texto "Drag and drop file here", o ícone de nuvem e a caixa branca interna. */
+    /* Target: O primeiro div dentro da seção que contém o ícone e o texto de arrastar e soltar. */
     [data-testid='stFileUploader'] section > div:first-child {
-        display: none;
+        display: none !important; 
     }
     
-    /* 2. Esconde o texto chato "Limit 200MB per file" */
+    /* 2. Esconde o texto chato "Limit 200MB per file" e qualquer texto pequeno de aviso. */
     [data-testid='stFileUploader'] section + div, 
     [data-testid='stFileUploader'] small {
         display: none !important;
@@ -71,6 +72,9 @@ st.markdown("""
         cursor: pointer;
         transition: all 0.3s ease;
         box-shadow: 0 4px 6px rgba(0, 126, 167, 0.2);
+        /* Garante que o conteúdo que está sendo forçado a aparecer fique no centro */
+        padding: 0; 
+        margin: 0;
     }
 
     /* 4. Efeito Hover */
@@ -80,16 +84,19 @@ st.markdown("""
         box-shadow: 0 6px 10px rgba(0, 126, 167, 0.3);
     }
 
-    /* 5. Insere o texto novo no botão */
+    /* 5. Insere o texto novo no botão, garantindo que ele sobrescreva qualquer outro conteúdo */
     [data-testid='stFileUploader'] section::after {
         content: "📄 Carregar Arquivo PDF";
         font-weight: 600;
         font-size: 1.1rem;
         letter-spacing: 0.5px;
+        /* Força a centralização, caso o layout interno tenha sido afetado */
+        display: block; 
+        width: 100%;
+        text-align: center;
     }
     
-    /* 6. Quando o arquivo está carregado (estado 'uploaded') */
-    /* Tenta esconder a lista de arquivos padrão feia para mostrarmos nossa própria msg */
+    /* 6. Quando o arquivo está carregado, remove a lista feia de arquivos */
     [data-testid='stFileUploader'] ul {
         display: none; 
     }
@@ -232,13 +239,13 @@ st.markdown('<div class="subtitle">Extração automática de dados de planejamen
 uploaded_file = st.file_uploader("", type="pdf")
 
 if uploaded_file:
-    # Mostra qual arquivo foi carregado (já que escondemos a lista padrão)
+    # Feedback Visual quando o arquivo é carregado
     st.markdown(f"""
     <div style="text-align:center; margin-top:10px; color:#28a745; font-weight:bold;">
-        ✅ Arquivo carregado: {uploaded_file.name}
+        ✅ Arquivo carregado: **{uploaded_file.name}**
     </div>
     """, unsafe_allow_html=True)
-
+    
     try:
         reader = PyPDF2.PdfReader(uploaded_file)
         full_text = "\n".join([page.extract_text() for page in reader.pages])
@@ -252,7 +259,7 @@ if uploaded_file:
         col_res1, col_res2 = st.columns([2, 1])
         
         with col_res1:
-            st.subheader("📋 Pré-visualização")
+            st.subheader("📋 Pré-visualização dos Dados")
             st.dataframe(df, use_container_width=True, hide_index=True)
             
         with col_res2:
@@ -275,3 +282,5 @@ if uploaded_file:
         st.error(f"Erro ao ler o arquivo: {e}")
 
 st.markdown('</div>', unsafe_allow_html=True) # Fecha Card
+
+Would you like me to upload these files to the Streamlit app for you to test the new design, or is the code sufficient?
