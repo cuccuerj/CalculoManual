@@ -76,10 +76,13 @@ class TeletherapyExtractor:
 
         # Extração de FSX e FSY (apenas "determined from the total fluence")
         # Aceita tanto inglês quanto português
+        # Regex flexível para FSX/FSY
         fluencia_matches = re.findall(
-            r'(?:determined from the total fluence|determinado a partir da flu[eê]ncia total):\s*fsx\s*=\s*(\d+)\s*mm[,\s]+fsy\s*=\s*(\d+)\s*mm',
-            c, re.IGNORECASE
+            r'(?:fluence|flu[eê]ncia).*?fsx\s*=\s*([\d.,]+)\s*mm.*?fsy\s*=\s*([\d.,]+)\s*mm',
+            c,
+            re.IGNORECASE | re.DOTALL
         )
+
         
         # DEBUG temporário
         st.info(f"🔍 Debug: {len(fluencia_matches)} pares FSX/FSY encontrados")
