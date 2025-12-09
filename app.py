@@ -76,6 +76,11 @@ class TeletherapyExtractor:
             r'(?:determined from the total fluence|determinado a partir da flu[eê]ncia total):\s*fsx\s*=\s*(\d+)\s*mm[,\s]+fsy\s*=\s*(\d+)\s*mm',
             c, re.IGNORECASE
         )
+        
+        # DEBUG temporário
+        st.info(f"🔍 Debug: {len(fluencia_matches)} pares FSX/FSY encontrados")
+        st.info(f"🔍 Filtros extraídos: {filtros}")
+        st.info(f"🔍 Número de campos: {num_campos}")
 
         # Monta saída textual e tabela
         output_lines = []
