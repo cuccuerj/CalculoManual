@@ -26,22 +26,6 @@ class TeletherapyExtractor:
 
     def process(self):
         c = self.clean_content
-        
-        # DEBUG: Mostrar parte do conteúdo para verificar
-        st.write("=" * 80)
-        st.write("**DEBUG - Primeiros 500 caracteres do conteúdo limpo:**")
-        st.code(c[:500])
-        st.write("=" * 80)
-        
-        # Procurar por "fsx" em todo o conteúdo
-        if "fsx" in c.lower():
-            st.success("✓ Palavra 'fsx' encontrada no conteúdo")
-            # Mostrar contexto ao redor de fsx
-            idx = c.lower().find("fsx")
-            st.code(f"Contexto: ...{c[max(0,idx-50):idx+100]}...")
-        else:
-            st.error("✗ Palavra 'fsx' NÃO encontrada no conteúdo")
-        st.write("=" * 80)
 
         # Extrações básicas
         nome = self._extract_regex(r'Nome do Paciente:\s*(.+?)(?=\s*Matricula)')
@@ -86,29 +70,12 @@ class TeletherapyExtractor:
             block_eff = self._get_block('Profundidade Efetiva', 'Campo 1')
         prof_eff_vals = get_vals(block_eff, r'Campo \d+\s*([\d.]+)\s*cm')
 
-        # CORREÇÃO: Nova regex para capturar FSX e FSY
-        st.write("\n" + "=" * 80)
-        st.write("**Tentando extrair FSX e FSY...**")
-        
-        # Busca APENAS pelos valores "determined from the total fluence"
+        # Extração de FSX e FSY (apenas "determined from the total fluence")
         # Aceita tanto inglês quanto português
-        fluencia_matches = []
-        
-        # Procura por ambas as versões (inglês e português) em uma única regex
-        pattern = re.findall(
+        fluencia_matches = re.findall(
             r'(?:determined from the total fluence|determinado a partir da flu[eê]ncia total):\s*fsx\s*=\s*(\d+)\s*mm[,\s]+fsy\s*=\s*(\d+)\s*mm',
             c, re.IGNORECASE
         )
-        
-        if pattern:
-            fluencia_matches = pattern
-            st.success(f"✓ {len(fluencia_matches)} pares FSX/FSY encontrados (total fluence)")
-            for idx, (fsx, fsy) in enumerate(fluencia_matches):
-                st.write(f"  Campo {idx+1}: FSX={fsx}mm, FSY={fsy}mm")
-        else:
-            st.error("✗ Nenhum valor FSX/FSY encontrado com 'total fluence'")
-        
-        st.write("=" * 80 + "\n")
 
         # Monta saída textual e tabela
         output_lines = []
@@ -124,19 +91,15 @@ class TeletherapyExtractor:
             def safe(lst, idx, default="N/A"):
                 return lst[idx] if idx < len(lst) else default
 
-            # Fluência só se não houver filtro
+            # Fluência - verifica se tem filtro primeiro
             f_x_val, f_y_val = "-", "-"
-            has_filtro = False
-            if i < len(filtros) and filtros[i] not in ('-', 'nan', ''):
-                has_filtro = True
-
-            if not has_filtro and fluencia_matches:
-                # Tenta pegar a fluência correspondente ao campo
-                if i < len(fluencia_matches):
-                    f_x_val, f_y_val = fluencia_matches[i]
-                else:
-                    # Se não houver correspondência, usa a última
-                    f_x_val, f_y_val = fluencia_matches[-1]
+            
+            # Verifica se NÃO tem filtro (filtro é "-")
+            has_filtro = (i < len(filtros) and filtros[i] not in ('-', 'nan', '', 'N/A'))
+            
+            # Se NÃO tem filtro, pega os valores de fluência
+            if not has_filtro and fluencia_matches and i < len(fluencia_matches):
+                f_x_val, f_y_val = fluencia_matches[i]
 
             row = [
                 safe(energias_campos, i, ""),
