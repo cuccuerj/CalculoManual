@@ -55,7 +55,11 @@ class TeletherapyExtractor:
         y_sizes = get_vals(block_y, r'Campo \d+\s*([\d.]+)\s*cm')
         jaw_y1 = get_vals(block_jaw_y1, r'Y1:\s*([+-]?\d+\.\d+)')
         jaw_y2 = get_vals(block_jaw_y2, r'Y2:\s*([+-]?\d+\.\d+)')
-        filtros = get_vals(block_filtros, r'Campo \d+\s*([-\w]+)')
+        
+        # CORREÇÃO: Regex mais específica para filtros
+        # Pega apenas o que vem depois de "Campo X" dentro do bloco de Filtro
+        filtros = get_vals(block_filtros, r'Campo \d+\s+([-\w]+)(?:\s|$)')
+        
         um_vals = get_vals(block_mu, r'Campo \d+\s*([\d.]+)\s*MU')
         dose_vals = re.findall(r'Campo \d+\s+([\d.]+)\s*cGy', c)
 
@@ -79,6 +83,7 @@ class TeletherapyExtractor:
         
         # DEBUG temporário
         st.info(f"🔍 Debug: {len(fluencia_matches)} pares FSX/FSY encontrados")
+        st.info(f"🔍 Bloco de Filtros: '{block_filtros[:200] if block_filtros else 'NULO'}'")
         st.info(f"🔍 Filtros extraídos: {filtros}")
         st.info(f"🔍 Número de campos: {num_campos}")
 
