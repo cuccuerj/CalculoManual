@@ -91,20 +91,14 @@ class TeletherapyExtractor:
         st.write("**Tentando extrair FSX e FSY...**")
         
         # Busca APENAS pelos valores "determined from the total fluence"
+        # Aceita tanto inglês quanto português
         fluencia_matches = []
         
-        # Procura especificamente pela frase "determined from the total fluence"
+        # Procura por ambas as versões (inglês e português) em uma única regex
         pattern = re.findall(
-            r'determined from the total fluence:\s*fsx\s*=\s*(\d+)\s*mm[,\s]+fsy\s*=\s*(\d+)\s*mm',
+            r'(?:determined from the total fluence|determinado a partir da flu[eê]ncia total):\s*fsx\s*=\s*(\d+)\s*mm[,\s]+fsy\s*=\s*(\d+)\s*mm',
             c, re.IGNORECASE
         )
-        
-        # Se não encontrar em inglês, tenta em português
-        if not pattern:
-            pattern = re.findall(
-                r'determinado a partir da flu[eê]ncia total:\s*fsx\s*=\s*(\d+)\s*mm[,\s]+fsy\s*=\s*(\d+)\s*mm',
-                c, re.IGNORECASE
-            )
         
         if pattern:
             fluencia_matches = pattern
