@@ -86,7 +86,7 @@ class TeletherapyExtractor:
         y_sizes = self._extract_vals(bloco_y, r'Campo\s+\d+\s+([\d.]+)\s*cm')
         y1_vals = self._extract_vals(bloco_y1, r'Y1:\s*([+-]?\d+\.\d+)')
         y2_vals = self._extract_vals(bloco_y2, r'Y2:\s*([+-]?\d+\.\d+)')
-        filtros = self._extract_vals(bloco_filtro, r'Campo\s+\d+\s+([-\w]+)')
+        filtros = self._extract_vals(bloco_filtro, r'Campo\s+\d+\s+(EDW\w+|-)')
         mu_vals = self._extract_vals(bloco_mu, r'Campo\s+\d+\s*([\d.]+)\s*MU')
         dose_vals = self._extract_vals(bloco_dose, r'Campo\s+\d+\s*([\d.]+)\s*cGy')
         ssd_vals = self._extract_vals(bloco_ssd, r'Campo\s+\d+\s*([\d.]+)\s*cm')
