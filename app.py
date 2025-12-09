@@ -108,15 +108,10 @@ class TeletherapyExtractor:
             
             # Verifica se NÃO tem filtro (filtro é "-")
             has_filtro = (i < len(filtros) and filtros[i] not in ('-', 'nan', '', 'N/A'))
-
-            if fluencia_matches:
-                # se houver apenas um par, usa para todos os campos
-                if i < len(fluencia_matches):
-                    f_x_val, f_y_val = fluencia_matches[i]
-                else:
-                    f_x_val, f_y_val = fluencia_matches[0]
-
-
+            
+            # Se NÃO tem filtro, pega os valores de fluência
+            if not has_filtro and fluencia_matches and i < len(fluencia_matches):
+                f_x_val, f_y_val = fluencia_matches[i]
 
             row = [
                 safe(energias_campos, i, ""),
