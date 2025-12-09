@@ -90,36 +90,30 @@ class TeletherapyExtractor:
         st.write("\n" + "=" * 80)
         st.write("**Tentando extrair FSX e FSY...**")
         
-        # Padrão ultra-robusto: apenas fsx = NUMERO e fsy = NUMERO
+        # Busca APENAS pelos valores "determined from the total fluence"
         fluencia_matches = []
         
-        # Busca por fsx seguido de números
-        fsx_values = re.findall(r'fsx\s*[a-zA-Z]*\s*=\s*(\d+)', c, re.IGNORECASE)
-        fsy_values = re.findall(r'fsy\s*[a-zA-Z]*\s*=\s*(\d+)', c, re.IGNORECASE)
+        # Procura especificamente pela frase "determined from the total fluence"
+        pattern = re.findall(
+            r'determined from the total fluence:\s*fsx\s*=\s*(\d+)\s*mm[,\s]+fsy\s*=\s*(\d+)\s*mm',
+            c, re.IGNORECASE
+        )
         
-        st.write(f"**FSX encontrados:** {fsx_values}")
-        st.write(f"**FSY encontrados:** {fsy_values}")
-        
-        # Combina os pares
-        if fsx_values and fsy_values:
-            # Procura por pares próximos
+        # Se não encontrar em inglês, tenta em português
+        if not pattern:
             pattern = re.findall(
-                r'fsx\s*[a-zA-Z]*\s*=\s*(\d+)\s*mm[,\s]*fsy\s*[a-zA-Z]*\s*=\s*(\d+)\s*mm',
+                r'determinado a partir da flu[eê]ncia total:\s*fsx\s*=\s*(\d+)\s*mm[,\s]+fsy\s*=\s*(\d+)\s*mm',
                 c, re.IGNORECASE
             )
-            if pattern:
-                fluencia_matches = pattern
-                st.success(f"✓ {len(fluencia_matches)} pares FSX/FSY encontrados corretamente")
-            else:
-                # Se não encontrar pares, tenta parear manualmente
-                min_len = min(len(fsx_values), len(fsy_values))
-                fluencia_matches = [(fsx_values[i], fsy_values[i]) for i in range(min_len)]
-                st.warning(f"⚠ Pareamento manual: {len(fluencia_matches)} pares")
-        else:
-            st.error("✗ Nenhum valor FSX/FSY encontrado")
         
-        for idx, (fsx, fsy) in enumerate(fluencia_matches):
-            st.write(f"  Campo {idx+1}: FSX={fsx}mm, FSY={fsy}mm")
+        if pattern:
+            fluencia_matches = pattern
+            st.success(f"✓ {len(fluencia_matches)} pares FSX/FSY encontrados (total fluence)")
+            for idx, (fsx, fsy) in enumerate(fluencia_matches):
+                st.write(f"  Campo {idx+1}: FSX={fsx}mm, FSY={fsy}mm")
+        else:
+            st.error("✗ Nenhum valor FSX/FSY encontrado com 'total fluence'")
+        
         st.write("=" * 80 + "\n")
 
         # Monta saída textual e tabela
