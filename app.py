@@ -1,4 +1,4 @@
-import gradio as gr
+import streamlit as st
 import PyPDF2
 import pandas as pd
 import re
@@ -28,20 +28,20 @@ class TeletherapyExtractor:
         c = self.clean_content
         
         # DEBUG: Mostrar parte do conteúdo para verificar
-        print("=" * 80)
-        print("DEBUG - Primeiros 500 caracteres do conteúdo limpo:")
-        print(c[:500])
-        print("=" * 80)
+        st.write("=" * 80)
+        st.write("**DEBUG - Primeiros 500 caracteres do conteúdo limpo:**")
+        st.code(c[:500])
+        st.write("=" * 80)
         
         # Procurar por "fsx" em todo o conteúdo
         if "fsx" in c.lower():
-            print("✓ Palavra 'fsx' encontrada no conteúdo")
+            st.success("✓ Palavra 'fsx' encontrada no conteúdo")
             # Mostrar contexto ao redor de fsx
             idx = c.lower().find("fsx")
-            print(f"Contexto: ...{c[max(0,idx-50):idx+100]}...")
+            st.code(f"Contexto: ...{c[max(0,idx-50):idx+100]}...")
         else:
-            print("✗ Palavra 'fsx' NÃO encontrada no conteúdo")
-        print("=" * 80)
+            st.error("✗ Palavra 'fsx' NÃO encontrada no conteúdo")
+        st.write("=" * 80)
 
         # Extrações básicas
         nome = self._extract_regex(r'Nome do Paciente:\s*(.+?)(?=\s*Matricula)')
@@ -87,8 +87,8 @@ class TeletherapyExtractor:
         prof_eff_vals = get_vals(block_eff, r'Campo \d+\s*([\d.]+)\s*cm')
 
         # CORREÇÃO: Nova regex para capturar FSX e FSY
-        print("\n" + "=" * 80)
-        print("Tentando extrair FSX e FSY...")
+        st.write("\n" + "=" * 80)
+        st.write("**Tentando extrair FSX e FSY...**")
         
         # Padrão ultra-robusto: apenas fsx = NUMERO e fsy = NUMERO
         fluencia_matches = []
@@ -97,8 +97,8 @@ class TeletherapyExtractor:
         fsx_values = re.findall(r'fsx\s*[a-zA-Z]*\s*=\s*(\d+)', c, re.IGNORECASE)
         fsy_values = re.findall(r'fsy\s*[a-zA-Z]*\s*=\s*(\d+)', c, re.IGNORECASE)
         
-        print(f"FSX encontrados: {fsx_values}")
-        print(f"FSY encontrados: {fsy_values}")
+        st.write(f"**FSX encontrados:** {fsx_values}")
+        st.write(f"**FSY encontrados:** {fsy_values}")
         
         # Combina os pares
         if fsx_values and fsy_values:
@@ -109,18 +109,18 @@ class TeletherapyExtractor:
             )
             if pattern:
                 fluencia_matches = pattern
-                print(f"✓ {len(fluencia_matches)} pares FSX/FSY encontrados corretamente")
+                st.success(f"✓ {len(fluencia_matches)} pares FSX/FSY encontrados corretamente")
             else:
                 # Se não encontrar pares, tenta parear manualmente
                 min_len = min(len(fsx_values), len(fsy_values))
                 fluencia_matches = [(fsx_values[i], fsy_values[i]) for i in range(min_len)]
-                print(f"⚠ Pareamento manual: {len(fluencia_matches)} pares")
+                st.warning(f"⚠ Pareamento manual: {len(fluencia_matches)} pares")
         else:
-            print("✗ Nenhum valor FSX/FSY encontrado")
+            st.error("✗ Nenhum valor FSX/FSY encontrado")
         
         for idx, (fsx, fsy) in enumerate(fluencia_matches):
-            print(f"  Campo {idx+1}: FSX={fsx}mm, FSY={fsy}mm")
-        print("=" * 80 + "\n")
+            st.write(f"  Campo {idx+1}: FSX={fsx}mm, FSY={fsy}mm")
+        st.write("=" * 80 + "\n")
 
         # Monta saída textual e tabela
         output_lines = []
@@ -175,43 +175,43 @@ class TeletherapyExtractor:
         result_text = "\n".join(output_lines) if output_lines else "Nenhum dado extraído."
         return result_text, df, nome
 
-def process_pdf(file):
-    if file is None:
+def process_pdf(uploaded_file):
+    if uploaded_file is None:
         return "Nenhum arquivo enviado.", None, None
 
-    # Gradio fornece um objeto temporário com atributo .name
     try:
-        with open(file.name, "rb") as f:
-            reader = PyPDF2.PdfReader(f)
-            full_text = "\n".join([p.extract_text() or "" for p in reader.pages])
+        # Streamlit fornece um objeto UploadedFile
+        reader = PyPDF2.PdfReader(uploaded_file)
+        full_text = "\n".join([p.extract_text() or "" for p in reader.pages])
     except Exception as e:
         return f"Erro ao ler PDF: {e}", None, None
 
     extractor = TeletherapyExtractor(full_text)
     text, df, nome = extractor.process()
 
-    # salva txt temporário para download
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".txt")
-    tmp.write(text.encode("utf-8"))
-    tmp.flush()
-    tmp.close()
+    return text, df
 
-    return text, df, tmp.name
+# Interface Streamlit
+st.title("🏥 Processador de Teleterapia")
+st.markdown("Extração automática de dados de planejamento clínico")
 
-with gr.Blocks() as demo:
-    gr.Markdown("# Processador de Teleterapia")
-    gr.Markdown("Extração automática de dados de planejamento clínico")
+uploaded_file = st.file_uploader("Selecionar PDF", type=['pdf'])
 
-    with gr.Row():
-        with gr.Column(scale=1):
-            upload = gr.File(label="Selecionar PDF", file_count="single", type="file")
-            btn = gr.Button("Processar")
-        with gr.Column(scale=2):
-            txt_out = gr.Textbox(label="Texto extraído", lines=10)
-            df_out = gr.Dataframe(headers=["Energia","X","Y","Y1","Y2","Filtro","MU","Dose","SSD","Prof","P.Ef","FSX","FSY"], interactive=False)
-            download = gr.File(label="Baixar TXT")
-
-    btn.click(process_pdf, inputs=[upload], outputs=[txt_out, df_out, download])
-
-if __name__ == "__main__":
-    demo.launch()
+if uploaded_file is not None:
+    if st.button("Processar"):
+        with st.spinner("Processando PDF..."):
+            text, df = process_pdf(uploaded_file)
+            
+            st.subheader("📄 Texto Extraído")
+            st.text_area("Resultado", text, height=200)
+            
+            st.subheader("📊 Dados Tabulados")
+            st.dataframe(df, use_container_width=True)
+            
+            # Download do texto
+            st.download_button(
+                label="📥 Baixar TXT",
+                data=text,
+                file_name="resultado_extracao.txt",
+                mime="text/plain"
+            )
