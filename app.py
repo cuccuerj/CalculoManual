@@ -76,9 +76,8 @@ class TeletherapyExtractor:
 
         # Extração de FSX e FSY (apenas "determined from the total fluence")
         # Aceita tanto inglês quanto português
-        # Regex flexível para FSX/FSY
         fluencia_matches = re.findall(
-            r'(?:fluence|flu[eê]ncia).*?fsx\s*=\s*([\d.,]+)\s*mm.*?fsy\s*=\s*([\d.,]+)\s*mm',
+            r'(?:fluence|flu[eê]ncia)\s*:\s*.*?fsx\s*=\s*([\d.,]+)\s*mm.*?fsy\s*=\s*([\d.,]+)\s*mm',
             c,
             re.IGNORECASE | re.DOTALL
         )
@@ -104,15 +103,14 @@ class TeletherapyExtractor:
             def safe(lst, idx, default="N/A"):
                 return lst[idx] if idx < len(lst) else default
 
-            # Fluência - verifica se tem filtro primeiro
             f_x_val, f_y_val = "-", "-"
-            
-            # Verifica se NÃO tem filtro (filtro é "-")
-            has_filtro = (i < len(filtros) and filtros[i] not in ('-', 'nan', '', 'N/A'))
-            
-            # Se NÃO tem filtro, pega os valores de fluência
-            if not has_filtro and fluencia_matches and i < len(fluencia_matches):
-                f_x_val, f_y_val = fluencia_matches[i]
+            if fluencia_matches:
+                # se houver apenas um par, usa para todos os campos
+                if i < len(fluencia_matches):
+                    f_x_val, f_y_val = fluencia_matches[i]
+                else:
+                    f_x_val, f_y_val = fluencia_matches[0]
+
 
             row = [
                 safe(energias_campos, i, ""),
