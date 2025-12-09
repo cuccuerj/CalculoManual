@@ -103,13 +103,19 @@ class TeletherapyExtractor:
             def safe(lst, idx, default="N/A"):
                 return lst[idx] if idx < len(lst) else default
 
+            # Fluência - verifica se tem filtro primeiro
             f_x_val, f_y_val = "-", "-"
+            
+            # Verifica se NÃO tem filtro (filtro é "-")
+            has_filtro = (i < len(filtros) and filtros[i] not in ('-', 'nan', '', 'N/A'))
+
             if fluencia_matches:
                 # se houver apenas um par, usa para todos os campos
                 if i < len(fluencia_matches):
                     f_x_val, f_y_val = fluencia_matches[i]
                 else:
                     f_x_val, f_y_val = fluencia_matches[0]
+
 
 
             row = [
