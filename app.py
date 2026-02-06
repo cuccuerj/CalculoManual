@@ -148,13 +148,13 @@ class TeletherapyExtractor:
         result_text = "\n".join(output_lines) if output_lines else "Nenhum dado extraído."
         return result_text, df, nome
 
-def process_pdf(file):
-    if file is None:
+def process_pdf(file_path):
+    if file_path is None:
         return "Nenhum arquivo enviado.", None, None
 
-    # Gradio fornece um objeto temporário com atributo .name
+    # Gradio agora passa o caminho do arquivo diretamente
     try:
-        with open(file.name, "rb") as f:
+        with open(file_path, "rb") as f:
             reader = PyPDF2.PdfReader(f)
             full_text = "\n".join([p.extract_text() or "" for p in reader.pages])
     except Exception as e:
@@ -172,12 +172,12 @@ def process_pdf(file):
     return text, df, tmp.name
 
 with gr.Blocks() as demo:
-    gr.Markdown("# Processador de Teleterapia 2026")
+    gr.Markdown("# Processador de Teleterapia")
     gr.Markdown("Extração automática de dados de planejamento clínico")
 
     with gr.Row():
         with gr.Column(scale=1):
-            upload = gr.File(label="Selecionar PDF", file_count="single", type="file")
+            upload = gr.File(label="Selecionar PDF", file_count="single", type="filepath")
             btn = gr.Button("Processar")
         with gr.Column(scale=2):
             txt_out = gr.Textbox(label="Texto extraído", lines=10)
