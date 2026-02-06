@@ -1,175 +1,190 @@
-import streamlit as st
+import gradio as gr
 import PyPDF2
 import pandas as pd
 import re
+from io import BytesIO
+import tempfile
 
 class TeletherapyExtractor:
     def __init__(self, content: str):
         self.raw_content = content or ""
-        self.clean_content = "\n".join(
-            " ".join(line.split()) for line in self.raw_content.splitlines()
-        )
+        self.clean_content = ' '.join(self.raw_content.split())
 
-    def _extract_section(self, start, end=None):
-        """Extrai bloco de texto entre dois marcadores."""
-        text = self.clean_content
-        pattern = fr'{re.escape(start)}(.*?){re.escape(end)}' if end else fr'{re.escape(start)}(.*)'
-        m = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
-        return m.group(1).strip() if m else ""
-
-    def _extract_vals(self, block, regex):
-        return re.findall(regex, block, re.IGNORECASE) if block else []
-
-    def _split_info_campos(self):
-        """Divide 'Informações do Campo' em blocos por Campo N."""
-        idx = self.clean_content.lower().find("informações do campo")
-        if idx == -1:
-            return {}
-        info_section = self.clean_content[idx:]
-        parts = re.split(r'\n\s*Campo\s+(\d+)\s*\n', info_section, flags=re.IGNORECASE)
-        info_blocks = {}
-        for i in range(1, len(parts), 2):
-            try:
-                num = int(parts[i])
-                bloco = parts[i + 1]
-                info_blocks[num] = bloco
-            except:
-                continue
-        return info_blocks
-
-    def _extract_fs(self, block):
-        """Extrai FSX/FSY de um bloco de Informações."""
-        if not block:
+    def _extract_regex(self, pattern, content_block=None, group=1, find_all=False):
+        target = content_block if content_block else self.clean_content
+        try:
+            if find_all:
+                return re.findall(pattern, target)
+            match = re.search(pattern, target, re.IGNORECASE | re.DOTALL)
+            return match.group(group).strip() if match else None
+        except:
             return None
-        m = re.search(
-            r'flu[eê]ncia\s+total.*?fsx\s*=\s*([\d.,]+)\s*mm.*?fsy\s*=\s*([\d.,]+)\s*mm',
-            block, re.IGNORECASE | re.DOTALL
-        )
-        if m:
-            return (m.group(1), m.group(2))
-        m2 = re.search(
-            r'(?:fluence|flu[eê]ncia).*?fsx\s*=\s*([\d.,]+)\s*mm.*?fsy\s*=\s*([\d.,]+)\s*mm',
-            block, re.IGNORECASE | re.DOTALL
-        )
-        if m2:
-            return (m2.group(1), m2.group(2))
-        return None
+
+    def _get_block(self, start_marker, end_marker):
+        pattern = fr'{re.escape(start_marker)}(.*?){re.escape(end_marker)}'
+        return self._extract_regex(pattern, group=1)
 
     def process(self):
         c = self.clean_content
 
-        # Dados básicos
-        nome = re.search(r'Nome do Paciente:\s*(.+?)(?=\s*Matricula)', c)
-        nome = nome.group(1).strip() if nome else None
-        matricula = re.search(r'Matricula:\s*(\d+)', c)
-        matricula = matricula.group(1) if matricula else None
+        # Extrações básicas
+        nome = self._extract_regex(r'Nome do Paciente:\s*(.+?)(?=\s*Matricula)')
+        matricula = self._extract_regex(r'Matricula:\s*(\d+)')
+
         unidade_match = re.search(r'Unidade de tratamento:\s*([^,]+),\s*energia:\s*(\S+)', c)
         unidade = unidade_match.group(1).strip() if unidade_match else "N/A"
         energia_unidade = unidade_match.group(2).strip() if unidade_match else "N/A"
 
-        # Seções
-        bloco_energia = self._extract_section("Energia", "Tamanho do Campo Aberto X")
-        bloco_x = self._extract_section("Tamanho do Campo Aberto X", "Tamanho do Campo Aberto Y")
-        bloco_y = self._extract_section("Tamanho do Campo Aberto Y", "Jaw Y1")
-        bloco_y1 = self._extract_section("Jaw Y1", "Jaw Y2")
-        bloco_y2 = self._extract_section("Jaw Y2", "Filtro")
-        bloco_filtro = self._extract_section("Filtro", "MU")
-        bloco_mu = self._extract_section("MU", "Dose")
-        bloco_dose = self._extract_section("Dose", "SSD")
-        bloco_ssd = self._extract_section("SSD", "Profundidade")
-        bloco_prof = self._extract_section("Profundidade", "Profundidade Efetiva")
-        bloco_pef = self._extract_section("Profundidade Efetiva", "Informações do Campo")
+        # Campos e energias
+        campos_raw = re.findall(r'Campo (\d+)\s+(\d+X)', c)
+        energias_campos = [item[1] for item in campos_raw]
+        num_campos = len(energias_campos)
 
-        # Listas
-        energias = self._extract_vals(bloco_energia, r'Campo\s+\d+\s+(\S+)')
-        x_sizes = self._extract_vals(bloco_x, r'Campo\s+\d+\s+([\d.]+)\s*cm')
-        y_sizes = self._extract_vals(bloco_y, r'Campo\s+\d+\s+([\d.]+)\s*cm')
-        y1_vals = self._extract_vals(bloco_y1, r'Y1:\s*([+-]?\d+\.\d+)')
-        y2_vals = self._extract_vals(bloco_y2, r'Y2:\s*([+-]?\d+\.\d+)')
-        filtros = self._extract_vals(bloco_filtro, r'Campo\s+\d+\s+(EDW\w+|-)')
-        mu_vals = self._extract_vals(bloco_mu, r'Campo\s+\d+\s*([\d.]+)\s*MU')
-        dose_vals = self._extract_vals(bloco_dose, r'Campo\s+\d+\s*([\d.]+)\s*cGy')
-        ssd_vals = self._extract_vals(bloco_ssd, r'Campo\s+\d+\s*([\d.]+)\s*cm')
-        prof_vals = self._extract_vals(bloco_prof, r'Campo\s+\d+\s*([\d.]+)\s*cm')
-        pef_vals = self._extract_vals(bloco_pef, r'Campo\s+\d+\s*([\d.]+)\s*cm')
+        # Blocos de texto
+        block_x = self._get_block('Tamanho do Campo Aberto X', 'Tamanho do Campo Aberto Y')
+        block_y = self._get_block('Tamanho do Campo Aberto Y', 'Jaw Y1')
+        block_jaw_y1 = self._get_block('Jaw Y1', 'Jaw Y2')
+        block_jaw_y2 = self._get_block('Jaw Y2', 'Filtro')
+        block_filtros = self._get_block('Filtro', 'MU')
+        block_mu = self._get_block('MU', 'Dose')
 
-        num_campos = len(energias)
-        info_blocks = self._split_info_campos()
+        def get_vals(block, regex):
+            return re.findall(regex, block) if block else []
 
-        # Monta tabela
+        x_sizes = get_vals(block_x, r'Campo \d+\s*([\d.]+)\s*cm')
+        y_sizes = get_vals(block_y, r'Campo \d+\s*([\d.]+)\s*cm')
+        jaw_y1 = get_vals(block_jaw_y1, r'Y1:\s*([+-]?\d+\.\d+)')
+        jaw_y2 = get_vals(block_jaw_y2, r'Y2:\s*([+-]?\d+\.\d+)')
+        filtros = get_vals(block_filtros, r'Campo \d+\s*([-\w]+)')
+        um_vals = get_vals(block_mu, r'Campo \d+\s*([\d.]+)\s*MU')
+        dose_vals = re.findall(r'Campo \d+\s+([\d.]+)\s*cGy', c)
+
+        block_ssd = self._get_block('SSD', 'Profundidade')
+        ssd_vals = get_vals(block_ssd, r'Campo \d+\s*([\d.]+)\s*cm')
+
+        block_prof = self._get_block('Profundidade', 'Profundidade Efetiva')
+        prof_vals = get_vals(block_prof, r'Campo \d+\s*([\d.]+)\s*cm')
+
+        block_eff = self._get_block('Profundidade Efetiva', 'Informações do Campo')
+        if not block_eff:
+            block_eff = self._get_block('Profundidade Efetiva', 'Campo 1')
+        prof_eff_vals = get_vals(block_eff, r'Campo \d+\s*([\d.]+)\s*cm')
+
+        # CORREÇÃO: Captura FSX e FSY APENAS da linha "determined from the total fluence"
+        # Ignora completamente a linha com "CBSF lookup"
+        # Suporta tanto inglês quanto português
+        fluencia_matches = []
+        
+        # Padrão em inglês: "determined from the total fluence"
+        pattern_en = re.findall(
+            r'determined from the total fluence:\s*fsx\s*=\s*(\d+)\s*mm\s*,\s*fsy\s*=\s*(\d+)\s*mm',
+            c, re.IGNORECASE
+        )
+        
+        # Padrão em português: "determinado a partir da fluência total"
+        pattern_pt = re.findall(
+            r'determinado a partir da flu[eê]ncia total:\s*fsx\s*=\s*(\d+)\s*mm\s*,\s*fsy\s*=\s*(\d+)\s*mm',
+            c, re.IGNORECASE
+        )
+        
+        # Combina resultados de ambos os padrões
+        fluencia_matches = pattern_en + pattern_pt
+        
+        if fluencia_matches:
+            print(f"DEBUG - Encontrados {len(fluencia_matches)} pares FSX/FSY (total fluence)")
+            for idx, (fsx, fsy) in enumerate(fluencia_matches):
+                print(f"  Campo {idx+1}: FSX={fsx}mm, FSY={fsy}mm")
+
+        # Monta saída textual e tabela
+        output_lines = []
+        if nome:
+            output_lines.append(f"Nome do Paciente: {nome}")
+        if matricula:
+            output_lines.append(f"Matricula: {matricula}")
+        if unidade != "N/A":
+            output_lines.append(f"Unidade de tratamento: {unidade} | Energia: {energia_unidade}")
+
         table_data = []
-        for i in range(num_campos):
-            fsx, fsy = "-", "-"
-            bloco_info = info_blocks.get(i+1, "")
-            if filtros[i] == "-" and bloco_info:
-                fs_pair = self._extract_fs(bloco_info)
-                if fs_pair:
-                    fsx, fsy = fs_pair
+        for i in range(max(1, num_campos)):
+            def safe(lst, idx, default="N/A"):
+                return lst[idx] if idx < len(lst) else default
+
+            # Fluência só se não houver filtro
+            f_x_val, f_y_val = "-", "-"
+            has_filtro = False
+            if i < len(filtros) and filtros[i] not in ('-', 'nan', ''):
+                has_filtro = True
+
+            if not has_filtro and fluencia_matches:
+                # Tenta pegar a fluência correspondente ao campo
+                if i < len(fluencia_matches):
+                    f_x_val, f_y_val = fluencia_matches[i]
+                else:
+                    # Se não houver correspondência, usa a última
+                    f_x_val, f_y_val = fluencia_matches[-1]
 
             row = [
-                energias[i],
-                x_sizes[i],
-                y_sizes[i],
-                y1_vals[i],
-                y2_vals[i],
-                filtros[i],
-                mu_vals[i],
-                dose_vals[i],
-                ssd_vals[i],
-                prof_vals[i],
-                pef_vals[i],
-                fsx,
-                fsy
+                safe(energias_campos, i, ""),
+                safe(x_sizes, i),
+                safe(y_sizes, i),
+                safe(jaw_y1, i),
+                safe(jaw_y2, i),
+                safe(filtros, i),
+                safe(um_vals, i),
+                safe(dose_vals, i),
+                safe(ssd_vals, i),
+                safe(prof_vals, i),
+                safe(prof_eff_vals, i),
+                f_x_val,
+                f_y_val
             ]
+            output_lines.append(", ".join([str(x) for x in row]))
             table_data.append(row)
 
         df = pd.DataFrame(table_data, columns=[
             "Energia", "X", "Y", "Y1", "Y2", "Filtro", "MU", "Dose", "SSD", "Prof", "P.Ef", "FSX", "FSY"
         ])
 
-        # Texto resumo
-        output_lines = []
-        if nome: output_lines.append(f"Nome do Paciente: {nome}")
-        if matricula: output_lines.append(f"Matricula: {matricula}")
-        if unidade != "N/A": output_lines.append(f"Unidade de tratamento: {unidade} | Energia: {energia_unidade}")
-        for row in table_data:
-            output_lines.append(", ".join([str(x) for x in row]))
+        result_text = "\n".join(output_lines) if output_lines else "Nenhum dado extraído."
+        return result_text, df, nome
 
-        result_text = "\n".join(output_lines)
-        return result_text, df
+def process_pdf(file):
+    if file is None:
+        return "Nenhum arquivo enviado.", None, None
 
-def process_pdf(uploaded_file):
-    if uploaded_file is None:
-        return "Nenhum arquivo enviado.", None
+    # Gradio fornece um objeto temporário com atributo .name
     try:
-        reader = PyPDF2.PdfReader(uploaded_file)
-        full_text = "\n".join([p.extract_text() or "" for p in reader.pages])
+        with open(file.name, "rb") as f:
+            reader = PyPDF2.PdfReader(f)
+            full_text = "\n".join([p.extract_text() or "" for p in reader.pages])
     except Exception as e:
-        return f"Erro ao ler PDF: {e}", None
+        return f"Erro ao ler PDF: {e}", None, None
+
     extractor = TeletherapyExtractor(full_text)
-    return extractor.process()
+    text, df, nome = extractor.process()
 
-# --------------------------
-# Interface Streamlit
-# --------------------------
+    # salva txt temporário para download
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".txt")
+    tmp.write(text.encode("utf-8"))
+    tmp.flush()
+    tmp.close()
 
-st.title("🏥 Processador de Teleterapia")
-st.markdown("Extração automática de dados de planejamento clínico")
+    return text, df, tmp.name
 
-uploaded_file = st.file_uploader("Selecionar PDF", type=['pdf'])
+with gr.Blocks() as demo:
+    gr.Markdown("# Processador de Teleterapia 2026")
+    gr.Markdown("Extração automática de dados de planejamento clínico")
 
-if uploaded_file is not None:
-    if st.button("Processar"):
-        with st.spinner("Processando PDF..."):
-            text, df = process_pdf(uploaded_file)
-            st.subheader("📄 Texto Extraído")
-            st.text_area("Resultado", text, height=250)
-            st.subheader("📊 Dados Tabulados")
-            if df is not None and not df.empty:
-                st.dataframe(df, use_container_width=True)
-            st.download_button(
-                label="📥 Baixar TXT",
-                data=text,
-                file_name="resultado_extracao.txt",
-                mime="text/plain"
-            )
+    with gr.Row():
+        with gr.Column(scale=1):
+            upload = gr.File(label="Selecionar PDF", file_count="single", type="file")
+            btn = gr.Button("Processar")
+        with gr.Column(scale=2):
+            txt_out = gr.Textbox(label="Texto extraído", lines=10)
+            df_out = gr.Dataframe(headers=["Energia","X","Y","Y1","Y2","Filtro","MU","Dose","SSD","Prof","P.Ef","FSX","FSY"], interactive=False)
+            download = gr.File(label="Baixar TXT")
+
+    btn.click(process_pdf, inputs=[upload], outputs=[txt_out, df_out, download])
+
+if __name__ == "__main__":
+    demo.launch()
