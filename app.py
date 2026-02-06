@@ -204,7 +204,7 @@ with tab1:
 
 # ABA 2: Dois arquivos
 with tab2:
-    st.subheader("Processar e comparar dois arquivos PDF")
+    st.subheader("Processar dois arquivos PDF")
     
     col1, col2 = st.columns(2)
     
@@ -254,49 +254,7 @@ with tab2:
                             mime="text/plain",
                             key="download2"
                         )
-                    
-                    # Comparação
-                    st.subheader("🔍 Comparação")
-                    
-                    # Verifica se são do mesmo paciente
-                    if nome1 == nome2:
-                        st.info(f"✅ Mesmo paciente: {nome1}")
-                    else:
-                        st.warning(f"⚠️ Pacientes diferentes: {nome1} vs {nome2}")
-                    
-                    # Comparação de número de campos
-                    num_campos1 = len(df1)
-                    num_campos2 = len(df2)
-                    st.write(f"**Número de campos:** Arquivo 1 = {num_campos1} | Arquivo 2 = {num_campos2}")
-                    
-                    # Tabela comparativa se tiverem o mesmo número de campos
-                    if num_campos1 == num_campos2:
-                        st.subheader("📊 Comparação Detalhada")
-                        
-                        # Cria DataFrame comparativo
-                        comparison_data = []
-                        for i in range(num_campos1):
-                            row = {
-                                "Campo": f"Campo {i+1}",
-                                "Energia 1": df1.iloc[i]["Energia"],
-                                "Energia 2": df2.iloc[i]["Energia"],
-                                "MU 1": df1.iloc[i]["MU"],
-                                "MU 2": df2.iloc[i]["MU"],
-                                "Dose 1": df1.iloc[i]["Dose"],
-                                "Dose 2": df2.iloc[i]["Dose"],
-                                "FSX 1": df1.iloc[i]["FSX"],
-                                "FSX 2": df2.iloc[i]["FSX"],
-                                "FSY 1": df1.iloc[i]["FSY"],
-                                "FSY 2": df2.iloc[i]["FSY"],
-                            }
-                            comparison_data.append(row)
-                        
-                        df_comparison = pd.DataFrame(comparison_data)
-                        st.dataframe(df_comparison, use_container_width=True)
-                    else:
-                        st.info("ℹ️ Número de campos diferente - comparação detalhada não disponível")
-                    
                 else:
                     st.error("❌ Erro ao processar um ou ambos os arquivos")
     elif uploaded_file1 is not None or uploaded_file2 is not None:
-        st.info("ℹ️ Por favor, selecione ambos os arquivos PDF para comparação")
+        st.info("ℹ️ Por favor, selecione ambos os arquivos PDF para processar")
