@@ -167,30 +167,136 @@ def process_pdf(uploaded_file):
 st.title("🏥 Processador de Teleterapia")
 st.markdown("Extração automática de dados de planejamento clínico")
 
-uploaded_file = st.file_uploader("Selecionar PDF", type=["pdf"])
+# Criar abas
+tab1, tab2 = st.tabs(["📄 Arquivo Único", "📄📄 Comparar Dois Arquivos"])
 
-if uploaded_file is not None:
-    if st.button("Processar"):
-        with st.spinner("Processando PDF..."):
-            text, df, nome = process_pdf(uploaded_file)
-            
-            if df is not None:
-                st.success("✅ Processamento concluído!")
+# ABA 1: Arquivo único
+with tab1:
+    st.subheader("Processar um arquivo PDF")
+    uploaded_file = st.file_uploader("Selecionar PDF", type=["pdf"], key="single_file")
+
+    if uploaded_file is not None:
+        if st.button("Processar", key="btn_single"):
+            with st.spinner("Processando PDF..."):
+                text, df, nome = process_pdf(uploaded_file)
                 
-                # Mostra informações extraídas
-                st.subheader("📋 Dados Extraídos")
-                st.text(text)
+                if df is not None:
+                    st.success("✅ Processamento concluído!")
+                    
+                    # Mostra informações extraídas
+                    st.subheader("📋 Dados Extraídos")
+                    st.text(text)
+                    
+                    # Mostra tabela
+                    st.subheader("📊 Tabela de Dados")
+                    st.dataframe(df, use_container_width=True)
+                    
+                    # Botão para download do TXT
+                    st.download_button(
+                        label="📥 Baixar TXT",
+                        data=text,
+                        file_name=f"{nome if nome else 'resultado'}.txt",
+                        mime="text/plain",
+                        key="download_single"
+                    )
+                else:
+                    st.error("❌ Erro ao processar o arquivo")
+
+# ABA 2: Dois arquivos
+with tab2:
+    st.subheader("Processar e comparar dois arquivos PDF")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("**Arquivo 1**")
+        uploaded_file1 = st.file_uploader("Selecionar primeiro PDF", type=["pdf"], key="file1")
+    
+    with col2:
+        st.markdown("**Arquivo 2**")
+        uploaded_file2 = st.file_uploader("Selecionar segundo PDF", type=["pdf"], key="file2")
+    
+    if uploaded_file1 is not None and uploaded_file2 is not None:
+        if st.button("Processar Ambos", key="btn_dual"):
+            with st.spinner("Processando PDFs..."):
+                # Processa arquivo 1
+                text1, df1, nome1 = process_pdf(uploaded_file1)
                 
-                # Mostra tabela
-                st.subheader("📊 Tabela de Dados")
-                st.dataframe(df, use_container_width=True)
+                # Processa arquivo 2
+                text2, df2, nome2 = process_pdf(uploaded_file2)
                 
-                # Botão para download do TXT
-                st.download_button(
-                    label="📥 Baixar TXT",
-                    data=text,
-                    file_name=f"{nome if nome else 'resultado'}.txt",
-                    mime="text/plain"
-                )
-            else:
-                st.error("❌ Erro ao processar o arquivo")
+                if df1 is not None and df2 is not None:
+                    st.success("✅ Processamento concluído!")
+                    
+                    # Exibir lado a lado
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.subheader(f"📄 Arquivo 1: {nome1 if nome1 else 'PDF 1'}")
+                        st.text(text1)
+                        st.dataframe(df1, use_container_width=True)
+                        st.download_button(
+                            label="📥 Baixar TXT 1",
+                            data=text1,
+                            file_name=f"{nome1 if nome1 else 'resultado1'}.txt",
+                            mime="text/plain",
+                            key="download1"
+                        )
+                    
+                    with col2:
+                        st.subheader(f"📄 Arquivo 2: {nome2 if nome2 else 'PDF 2'}")
+                        st.text(text2)
+                        st.dataframe(df2, use_container_width=True)
+                        st.download_button(
+                            label="📥 Baixar TXT 2",
+                            data=text2,
+                            file_name=f"{nome2 if nome2 else 'resultado2'}.txt",
+                            mime="text/plain",
+                            key="download2"
+                        )
+                    
+                    # Comparação
+                    st.subheader("🔍 Comparação")
+                    
+                    # Verifica se são do mesmo paciente
+                    if nome1 == nome2:
+                        st.info(f"✅ Mesmo paciente: {nome1}")
+                    else:
+                        st.warning(f"⚠️ Pacientes diferentes: {nome1} vs {nome2}")
+                    
+                    # Comparação de número de campos
+                    num_campos1 = len(df1)
+                    num_campos2 = len(df2)
+                    st.write(f"**Número de campos:** Arquivo 1 = {num_campos1} | Arquivo 2 = {num_campos2}")
+                    
+                    # Tabela comparativa se tiverem o mesmo número de campos
+                    if num_campos1 == num_campos2:
+                        st.subheader("📊 Comparação Detalhada")
+                        
+                        # Cria DataFrame comparativo
+                        comparison_data = []
+                        for i in range(num_campos1):
+                            row = {
+                                "Campo": f"Campo {i+1}",
+                                "Energia 1": df1.iloc[i]["Energia"],
+                                "Energia 2": df2.iloc[i]["Energia"],
+                                "MU 1": df1.iloc[i]["MU"],
+                                "MU 2": df2.iloc[i]["MU"],
+                                "Dose 1": df1.iloc[i]["Dose"],
+                                "Dose 2": df2.iloc[i]["Dose"],
+                                "FSX 1": df1.iloc[i]["FSX"],
+                                "FSX 2": df2.iloc[i]["FSX"],
+                                "FSY 1": df1.iloc[i]["FSY"],
+                                "FSY 2": df2.iloc[i]["FSY"],
+                            }
+                            comparison_data.append(row)
+                        
+                        df_comparison = pd.DataFrame(comparison_data)
+                        st.dataframe(df_comparison, use_container_width=True)
+                    else:
+                        st.info("ℹ️ Número de campos diferente - comparação detalhada não disponível")
+                    
+                else:
+                    st.error("❌ Erro ao processar um ou ambos os arquivos")
+    elif uploaded_file1 is not None or uploaded_file2 is not None:
+        st.info("ℹ️ Por favor, selecione ambos os arquivos PDF para comparação")
