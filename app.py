@@ -1,9 +1,8 @@
-import gradio as gr
+import streamlit as st
 import PyPDF2
 import pandas as pd
 import re
 from io import BytesIO
-import tempfile
 
 class TeletherapyExtractor:
     def __init__(self, content: str):
@@ -91,9 +90,9 @@ class TeletherapyExtractor:
         fluencia_matches = pattern_en + pattern_pt
         
         if fluencia_matches:
-            print(f"DEBUG - Encontrados {len(fluencia_matches)} pares FSX/FSY (total fluence)")
+            st.write(f"DEBUG - Encontrados {len(fluencia_matches)} pares FSX/FSY (total fluence)")
             for idx, (fsx, fsy) in enumerate(fluencia_matches):
-                print(f"  Campo {idx+1}: FSX={fsx}mm, FSY={fsy}mm")
+                st.write(f"  Campo {idx+1}: FSX={fsx}mm, FSY={fsy}mm")
 
         # Monta saída textual e tabela
         output_lines = []
@@ -148,43 +147,50 @@ class TeletherapyExtractor:
         result_text = "\n".join(output_lines) if output_lines else "Nenhum dado extraído."
         return result_text, df, nome
 
-def process_pdf(file_path):
-    if file_path is None:
+def process_pdf(uploaded_file):
+    if uploaded_file is None:
         return "Nenhum arquivo enviado.", None, None
 
-    # Gradio agora passa o caminho do arquivo diretamente
     try:
-        with open(file_path, "rb") as f:
-            reader = PyPDF2.PdfReader(f)
-            full_text = "\n".join([p.extract_text() or "" for p in reader.pages])
+        # Lê o PDF do objeto UploadedFile do Streamlit
+        reader = PyPDF2.PdfReader(uploaded_file)
+        full_text = "\n".join([p.extract_text() or "" for p in reader.pages])
     except Exception as e:
         return f"Erro ao ler PDF: {e}", None, None
 
     extractor = TeletherapyExtractor(full_text)
     text, df, nome = extractor.process()
 
-    # salva txt temporário para download
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".txt")
-    tmp.write(text.encode("utf-8"))
-    tmp.flush()
-    tmp.close()
+    return text, df, nome
 
-    return text, df, tmp.name
+# Interface Streamlit
+st.title("🏥 Processador de Teleterapia")
+st.markdown("Extração automática de dados de planejamento clínico")
 
-with gr.Blocks() as demo:
-    gr.Markdown("# Processador de Teleterapia")
-    gr.Markdown("Extração automática de dados de planejamento clínico")
+uploaded_file = st.file_uploader("Selecionar PDF", type=["pdf"])
 
-    with gr.Row():
-        with gr.Column(scale=1):
-            upload = gr.File(label="Selecionar PDF", file_count="single", type="filepath")
-            btn = gr.Button("Processar")
-        with gr.Column(scale=2):
-            txt_out = gr.Textbox(label="Texto extraído", lines=10)
-            df_out = gr.Dataframe(headers=["Energia","X","Y","Y1","Y2","Filtro","MU","Dose","SSD","Prof","P.Ef","FSX","FSY"], interactive=False)
-            download = gr.File(label="Baixar TXT")
-
-    btn.click(process_pdf, inputs=[upload], outputs=[txt_out, df_out, download])
-
-if __name__ == "__main__":
-    demo.launch()
+if uploaded_file is not None:
+    if st.button("Processar"):
+        with st.spinner("Processando PDF..."):
+            text, df, nome = process_pdf(uploaded_file)
+            
+            if df is not None:
+                st.success("✅ Processamento concluído!")
+                
+                # Mostra informações extraídas
+                st.subheader("📋 Dados Extraídos")
+                st.text(text)
+                
+                # Mostra tabela
+                st.subheader("📊 Tabela de Dados")
+                st.dataframe(df, use_container_width=True)
+                
+                # Botão para download do TXT
+                st.download_button(
+                    label="📥 Baixar TXT",
+                    data=text,
+                    file_name=f"{nome if nome else 'resultado'}.txt",
+                    mime="text/plain"
+                )
+            else:
+                st.error("❌ Erro ao processar o arquivo")
