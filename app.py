@@ -72,28 +72,30 @@ class TeletherapyExtractor:
         # CORREÇÃO: Captura FSX e FSY APENAS da linha "determined from the total fluence"
         # Ignora completamente a linha com "CBSF lookup"
         # Suporta tanto inglês quanto português
-        fluencia_matches = []
+        #fluencia_matches = []
         
-        # Padrão em inglês: "determined from the total fluence"
-        pattern_en = re.findall(
-            r'determined from the total fluence:\s*fsx\s*=\s*(\d+)\s*mm\s*,\s*fsy\s*=\s*(\d+)\s*mm',
+        # Extração de FSX e FSY usando o padrão unificado
+        fluencia_matches = re.findall(
+            r"(?:total fluence|fluência total).*?fsx\s*=\s*(\d+)\s*mm,\s*fsy\s*=\s*(\d+)\s*mm",
             c, re.IGNORECASE
         )
-        
-        # Padrão em português: "determinado a partir da fluência total"
-        pattern_pt = re.findall(
-            r'determinado a partir da flu[eê]ncia total:\s*fsx\s*=\s*(\d+)\s*mm\s*,\s*fsy\s*=\s*(\d+)\s*mm',
-            c, re.IGNORECASE
-        )
-        
-        # Combina resultados de ambos os padrões
-        fluencia_matches = pattern_en + pattern_pt
-        
-        if fluencia_matches:
-            st.write(f"DEBUG - Encontrados {len(fluencia_matches)} pares FSX/FSY (total fluence)")
-            for idx, (fsx, fsy) in enumerate(fluencia_matches):
-                st.write(f"  Campo {idx+1}: FSX={fsx}mm, FSY={fsy}mm")
 
+        # Se não encontrar, tenta linha a linha (fallback)
+        if not fluencia_matches:
+            for line in self.lines:
+                match = re.search(
+                    r"(?:total fluence|fluência total).*?fsx\s*=\s*(\d+)\s*mm,\s*fsy\s*=\s*(\d+)\s*mm",
+                    line, re.IGNORECASE
+                )
+                if match:
+                    fluencia_matches.append(match.groups())
+
+        # Para debug: mostrar o que foi encontrado
+        if fluencia_matches:
+            st.write("**Debug:** Fluência total encontrada:", fluencia_matches)
+        else:
+            st.write("**Debug:** Nenhuma fluência total encontrada.")
+        
         # Monta saída textual e tabela
         output_lines = []
         if nome:
