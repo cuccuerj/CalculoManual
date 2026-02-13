@@ -5,11 +5,10 @@ import re
 
 class TeletherapyExtractor:
     def __init__(self, content: str):
-        # Preserva o texto original e também cria uma versão "limpa"
         self.raw_content = content or ""
-        # Limpa apenas espaços excessivos, mas mantém quebras de linha para facilitar regex
-        self.clean_content = re.sub(r'\s+', ' ', self.raw_content)  # espaços simples
-        self.lines = self.raw_content.split('\n')  # para busca linha a linha
+        # Remove espaços extras mas mantém o texto contínuo para buscas simples
+        self.clean_content = re.sub(r'\s+', ' ', self.raw_content)
+        self.lines = self.raw_content.split('\n')
 
     def _extract_regex(self, pattern, text=None, group=1, flags=re.IGNORECASE):
         text = text or self.clean_content
@@ -42,63 +41,60 @@ class TeletherapyExtractor:
         energias_campos = [item[1] for item in campos_raw]
         num_campos = len(energias_campos)
 
-        # Extração dos parâmetros de cada campo (X, Y, Y1, Y2, Filtro, MU, Dose, SSD, Prof, Prof Ef)
-        # Vamos usar regex globais que capturam todos os valores em ordem
-        def extract_float_list(pattern):
-            return [x for x in re.findall(pattern, c) if x]
+        # Função auxiliar para extrair lista de valores com flags opcionais
+        def extract_values(pattern, flags=0):
+            return re.findall(pattern, c, flags)
 
-        x_sizes = extract_float_list(r'Campo \d+\s+([\d.]+)\s*cm(?=\s+Campo|\s*$)')
-        y_sizes = extract_float_list(r'Tamanho do Campo Aberto Y.*?Campo \d+\s+([\d.]+)\s*cm', re.DOTALL)
-        # Como Y vem depois de X, podemos pegar de forma mais simples:
-        if not y_sizes:
-            y_sizes = re.findall(r'Tamanho do Campo Aberto Y.*?Campo \d+\s+([\d.]+)\s*cm', c, re.DOTALL)
+        # Extração dos parâmetros
+        x_sizes = extract_values(r'Campo \d+\s+([\d.]+)\s*cm(?=\s+Campo|\s*$)')
+        y_sizes = extract_values(r'Tamanho do Campo Aberto Y.*?Campo \d+\s+([\d.]+)\s*cm', re.DOTALL)
+        jaw_y1 = extract_values(r'Jaw Y1.*?Y1:\s*([+-]?\d+\.\d+)', re.DOTALL)
+        jaw_y2 = extract_values(r'Jaw Y2.*?Y2:\s*([+-]?\d+\.\d+)', re.DOTALL)
+        filtros = extract_values(r'Filtro.*?Campo \d+\s+([-\w]+)', re.DOTALL)
+        um_vals = extract_values(r'MU.*?Campo \d+\s+([\d.]+)\s*MU', re.DOTALL)
+        dose_vals = extract_values(r'Dose.*?Campo \d+\s+([\d.]+)\s*cGy', re.DOTALL)
+        ssd_vals = extract_values(r'SSD.*?Campo \d+\s+([\d.]+)\s*cm', re.DOTALL)
+        prof_vals = extract_values(r'Profundidade\s+(?!Efetiva).*?Campo \d+\s+([\d.]+)\s*cm', re.DOTALL)
+        prof_eff_vals = extract_values(r'Profundidade Efetiva.*?Campo \d+\s+([\d.]+)\s*cm', re.DOTALL)
 
-        jaw_y1 = re.findall(r'Jaw Y1.*?Y1:\s*([+-]?\d+\.\d+)', c, re.DOTALL)
-        jaw_y2 = re.findall(r'Jaw Y2.*?Y2:\s*([+-]?\d+\.\d+)', c, re.DOTALL)
-        filtros = re.findall(r'Filtro.*?Campo \d+\s+([-\w]+)', c, re.DOTALL)
-        um_vals = re.findall(r'MU.*?Campo \d+\s+([\d.]+)\s*MU', c, re.DOTALL)
-        dose_vals = re.findall(r'Dose.*?Campo \d+\s+([\d.]+)\s*cGy', c, re.DOTALL)
-        ssd_vals = re.findall(r'SSD.*?Campo \d+\s+([\d.]+)\s*cm', c, re.DOTALL)
-        prof_vals = re.findall(r'Profundidade\s+(?!Efetiva).*?Campo \d+\s+([\d.]+)\s*cm', c, re.DOTALL)
-        prof_eff_vals = re.findall(r'Profundidade Efetiva.*?Campo \d+\s+([\d.]+)\s*cm', c, re.DOTALL)
-
-        # CORREÇÃO CRÍTICA: Extrair FSX e FSY da fluência total
-        # Vamos procurar em todas as linhas do texto original, pois pode haver quebras
+        # Extração de FSX e FSY da fluência total
         fluencia_matches = []
         # Padrão em português (com "ê" ou "e")
         pattern_pt = r'determinado a partir da flu[eê]ncia total:\s*fsx\s*=\s*(\d+)\s*mm\s*,\s*fsy\s*=\s*(\d+)\s*mm'
         # Padrão em inglês
         pattern_en = r'determined from the total fluence:\s*fsx\s*=\s*(\d+)\s*mm\s*,\s*fsy\s*=\s*(\d+)\s*mm'
 
-        # Busca no texto limpo (com espaços simples)
-        fluencia_matches_clean = re.findall(pattern_pt, c, re.IGNORECASE) + re.findall(pattern_en, c, re.IGNORECASE)
+        # Primeiro tenta no texto limpo
+        fluencia_matches = re.findall(pattern_pt, c, re.IGNORECASE) + re.findall(pattern_en, c, re.IGNORECASE)
 
-        # Se não achou, tenta buscar linha por linha (pode ser mais seguro)
-        if not fluencia_matches_clean:
+        # Se não achou, tenta linha a linha
+        if not fluencia_matches:
             for line in self.lines:
                 match_pt = re.search(pattern_pt, line, re.IGNORECASE)
                 if match_pt:
-                    fluencia_matches_clean.append(match_pt.groups())
+                    fluencia_matches.append(match_pt.groups())
                 match_en = re.search(pattern_en, line, re.IGNORECASE)
                 if match_en:
-                    fluencia_matches_clean.append(match_en.groups())
+                    fluencia_matches.append(match_en.groups())
 
-        # Exibir no Streamlit para depuração (pode remover depois)
-        st.write("Debug: Fluência total encontrada:", fluencia_matches_clean)
+        # Para debug: mostrar o que foi encontrado (pode remover depois)
+        if fluencia_matches:
+            st.write("**Debug:** Fluência total encontrada:", fluencia_matches)
+        else:
+            st.write("**Debug:** Nenhuma fluência total encontrada.")
 
-        # Agora, para cada campo, devemos associar o FSX/FSY correto
-        # Geralmente a ordem das ocorrências no texto segue a ordem dos campos
+        # Associa FSX/FSY a cada campo (ordem presumida)
         fsx_list = []
         fsy_list = []
         for i in range(num_campos):
-            if i < len(fluencia_matches_clean):
-                fsx_list.append(fluencia_matches_clean[i][0])
-                fsy_list.append(fluencia_matches_clean[i][1])
+            if i < len(fluencia_matches):
+                fsx_list.append(fluencia_matches[i][0])
+                fsy_list.append(fluencia_matches[i][1])
             else:
                 fsx_list.append("-")
                 fsy_list.append("-")
 
-        # Monta dados do paciente
+        # Informações do paciente
         paciente_info = {
             "Nome": nome if nome else "N/A",
             "Matrícula": matricula if matricula else "N/A",
@@ -108,7 +104,7 @@ class TeletherapyExtractor:
             "Energia (geral)": energia_unidade
         }
 
-        # Prepara tabela
+        # Monta tabela
         table_data = []
         for i in range(num_campos):
             def safe(lst, idx, default="N/A"):
@@ -138,7 +134,7 @@ class TeletherapyExtractor:
         ]
         df = pd.DataFrame(table_data, columns=columns)
 
-        # Texto simples
+        # Texto simples para download
         output_lines = [f"Nome: {paciente_info['Nome']} | Matrícula: {paciente_info['Matrícula']}"]
         for row in table_data:
             output_lines.append(", ".join([str(x) for x in row]))
